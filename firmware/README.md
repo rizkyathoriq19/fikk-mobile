@@ -42,6 +42,12 @@ pio device monitor -d firmware -e esp32dev
 
 Serial speed is `115200`.
 
+For the guided human-in-the-loop flash and physical BLE validation flow:
+
+```bash
+bash scripts/validate-esp32-ble.sh
+```
+
 ## BLE identity
 
 | Item | Value |
