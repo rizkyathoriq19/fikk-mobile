@@ -1,0 +1,27 @@
+export const ACK_STATUS = {
+  ACCEPTED: 0,
+  REJECTED: 1,
+  INVALID_STATE: 2,
+  INVALID_PACKET: 3,
+  UNSUPPORTED: 4,
+} as const;
+
+export const COMPLETION_REASONS = {
+  TARGET_REACHED: 1,
+  STOPPED: 2,
+  DEVICE_ERROR: 3,
+} as const;
+
+export const STOP_REASONS = {
+  USER: 1,
+  DEVICE_ERROR: 2,
+  RESTART: 3,
+} as const;
+
+export const ERROR_CODES = {
+  INVALID_PACKET: 0x0001,
+  INVALID_STATE: 0x0002,
+  UNSUPPORTED_VERSION: 0x0003,
+  INVALID_TARGET: 0x0004,
+  RESULT_NOT_FOUND: 0x0005,
+} as const;
