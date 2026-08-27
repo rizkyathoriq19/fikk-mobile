@@ -6,7 +6,7 @@ import {
   type ProtocolMessage,
   encodeMessage,
 } from '../../protocol/codec';
-import { ACK_STATUS } from '../../protocol/constants';
+import { ACK_STATUS, COMPLETION_REASONS } from '../../protocol/constants';
 import { FIKK_BLE_PROFILE } from '../../ble/fikk-profile';
 import type { BleAdapterState, BleDevice } from '../../ble/transport';
 import {
@@ -75,6 +75,16 @@ function acceptedStart(sessionId: number): ProtocolMessage {
     sessionId,
     sequence: 1,
     payload: { command: MESSAGE_TYPES.START, status: ACK_STATUS.ACCEPTED },
+  };
+}
+
+function complete(sessionId: number, sequence: number, count: number, durationMs: number): ProtocolMessage {
+  return {
+    version: 1,
+    messageType: MESSAGE_TYPES.COMPLETE,
+    sessionId,
+    sequence,
+    payload: { count, durationMs, reason: COMPLETION_REASONS.TARGET_REACHED },
   };
 }
 
@@ -195,4 +205,83 @@ test('START timeout retries once after a Ready state check', async () => {
 
   assert.equal(connection.writes.length, 2);
   assert.equal(controller.snapshot.state, 'active');
+});
+
+test('complete uses authoritative values and ignores stale or regressing progress', async () => {
+  const connection = new FakeTrainingConnection();
+  let timestamp = 0;
+  const controller = new TrainingSessionController({
+    connection,
+    sessionIdFactory: () => 55,
+    clock: () => `timestamp-${++timestamp}`,
+    startAckTimeoutMs: 50,
+  });
+  const start = controller.start('session notes');
+  await Promise.resolve();
+  connection.emit(acceptedStart(55));
+  await start;
+
+  connection.emit({
+    version: 1,
+    messageType: MESSAGE_TYPES.PROGRESS,
+    sessionId: 55,
+    sequence: 2,
+    payload: { count: 4, elapsedMs: 2400 },
+  });
+  connection.emit({
+    version: 1,
+    messageType: MESSAGE_TYPES.PROGRESS,
+    sessionId: 55,
+    sequence: 1,
+    payload: { count: 2, elapsedMs: 900 },
+  });
+  connection.emit({
+    version: 1,
+    messageType: MESSAGE_TYPES.PROGRESS,
+    sessionId: 55,
+    sequence: 3,
+    payload: { count: 3, elapsedMs: 1200 },
+  });
+
+  connection.emit({
+    version: 1,
+    messageType: MESSAGE_TYPES.PROGRESS,
+    sessionId: 999,
+    sequence: 4,
+    payload: { count: 6, elapsedMs: 3600 },
+  });
+  connection.emit({
+    version: 1,
+    messageType: MESSAGE_TYPES.PROGRESS,
+    sessionId: 55,
+    sequence: 4,
+    payload: { count: 7, elapsedMs: 3600 },
+  });
+  connection.emit({
+    version: 1,
+    messageType: MESSAGE_TYPES.COMPLETE,
+    sessionId: 55,
+    sequence: 5,
+    payload: { count: 6, durationMs: 3600, reason: 99 },
+  });
+
+  assert.equal(controller.snapshot.count, 4);
+  assert.equal(controller.snapshot.elapsedMs, 2400);
+
+  connection.emit(complete(55, 6, 6, 3600));
+
+  assert.equal(controller.snapshot.state, 'completed');
+  assert.deepEqual(controller.snapshot.result, {
+    count: 6,
+    durationMs: 3600,
+    reason: COMPLETION_REASONS.TARGET_REACHED,
+    sequence: 6,
+  });
+  assert.equal(controller.snapshot.startedAt, 'timestamp-1');
+  assert.equal(controller.snapshot.completedAt, 'timestamp-2');
+  assert.equal(controller.snapshot.notes, 'session notes');
+  assert.equal(controller.snapshot.deviceName, 'Fikk-ESP32');
+
+  connection.emit(complete(55, 4, 1, 100));
+  assert.equal(controller.snapshot.result?.count, 6);
 });

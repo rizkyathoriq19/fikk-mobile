@@ -58,7 +58,14 @@ export function HomeScreen() {
           Training active: {training.count}/{training.targetCount} · {training.elapsedMs} ms
         </Text>
       )}
-      {training.state === 'completed' && <Text style={styles.progress}>Training complete.</Text>}
+      {training.state === 'completed' && (
+        <>
+          <Text style={styles.progress}>Training complete.</Text>
+          <View style={styles.resultButton}>
+            <Button title="View Result" onPress={() => router.push('/result')} />
+          </View>
+        </>
+      )}
     </Screen>
   );
 }
@@ -74,4 +81,5 @@ const styles = StyleSheet.create({
   helper: { marginTop: 10, color: '#64748b' },
   error: { marginTop: 12, padding: 12, color: '#b91c1c', backgroundColor: '#fee2e2', borderRadius: 8 },
   progress: { marginTop: 16, fontWeight: '600', color: '#0f172a' },
+  resultButton: { marginTop: 12 },
 });

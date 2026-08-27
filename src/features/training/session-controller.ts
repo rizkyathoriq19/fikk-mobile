@@ -5,7 +5,7 @@ import {
   MESSAGE_TYPES,
   type ProtocolMessage,
 } from '../../protocol/codec';
-import { ACK_STATUS } from '../../protocol/constants';
+import { ACK_STATUS, COMPLETION_REASONS } from '../../protocol/constants';
 import type { ConnectionSnapshot } from '../bluetooth/connection-controller';
 
 export const MVP_TARGET_COUNT = 6 as const;
@@ -16,12 +16,16 @@ export type TrainingResult = {
   count: number;
   durationMs: number;
   reason: number;
+  sequence: number;
 };
 
 export type TrainingSnapshot = {
   state: TrainingState;
   sessionId: number | null;
   notes: string;
+  deviceName: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
   targetCount: typeof MVP_TARGET_COUNT;
   count: number;
   elapsedMs: number;
@@ -39,6 +43,7 @@ export interface TrainingConnection {
 type TrainingSessionControllerOptions = {
   connection: TrainingConnection;
   sessionIdFactory?: () => number;
+  clock?: () => string;
   startAckTimeoutMs?: number;
 };
 
@@ -64,6 +69,9 @@ const initialSnapshot: TrainingSnapshot = {
   state: 'idle',
   sessionId: null,
   notes: '',
+  deviceName: null,
+  startedAt: null,
+  completedAt: null,
   targetCount: MVP_TARGET_COUNT,
   count: 0,
   elapsedMs: 0,
@@ -75,6 +83,7 @@ export class TrainingSessionController {
   private currentSnapshot: TrainingSnapshot = initialSnapshot;
   private readonly listeners = new Set<TrainingSnapshotListener>();
   private readonly sessionIdFactory: () => number;
+  private readonly clock: () => string;
   private readonly startAckTimeoutMs: number;
   private readonly unsubscribeFromMessages: () => void;
   private pendingStart: PendingStart | null = null;
@@ -82,6 +91,7 @@ export class TrainingSessionController {
 
   constructor(private readonly options: TrainingSessionControllerOptions) {
     this.sessionIdFactory = options.sessionIdFactory ?? createSessionId;
+    this.clock = options.clock ?? (() => new Date().toISOString());
     this.startAckTimeoutMs = options.startAckTimeoutMs ?? 3000;
     this.unsubscribeFromMessages = options.connection.subscribeMessages((message) => this.handleMessage(message));
   }
@@ -118,6 +128,9 @@ export class TrainingSessionController {
       state: 'starting',
       sessionId,
       notes: normalizedNotes,
+      deviceName: this.options.connection.snapshot.connectedDevice?.name ?? null,
+      startedAt: null,
+      completedAt: null,
       targetCount: MVP_TARGET_COUNT,
       count: 0,
       elapsedMs: 0,
@@ -207,7 +220,7 @@ export class TrainingSessionController {
       this.clearPendingStart();
       if (message.payload.status === ACK_STATUS.ACCEPTED) {
         this.highestSequence = message.sequence;
-        this.update({ state: 'active', error: null });
+        this.update({ state: 'active', startedAt: this.clock(), error: null });
         pendingStart.resolve();
       } else {
         pendingStart.reject(new Error(`START rejected with status ${message.payload.status}`));
@@ -219,27 +232,54 @@ export class TrainingSessionController {
     if (sessionId === null || message.sessionId !== sessionId || !this.isNewSequence(message.sequence)) {
       return;
     }
-    this.highestSequence = message.sequence;
 
     if (message.messageType === MESSAGE_TYPES.PROGRESS && this.currentSnapshot.state === 'active') {
+      if (!isValidProgress(message.payload.count, message.payload.elapsedMs, this.currentSnapshot)) {
+        return;
+      }
+      this.highestSequence = message.sequence;
       this.update({ count: message.payload.count, elapsedMs: message.payload.elapsedMs });
-    } else if (message.messageType === MESSAGE_TYPES.COMPLETE && this.currentSnapshot.state === 'active') {
+      return;
+    }
+
+    if (message.messageType === MESSAGE_TYPES.COMPLETE && this.currentSnapshot.state === 'active') {
+      if (
+        !isValidProgress(message.payload.count, message.payload.durationMs, this.currentSnapshot) ||
+        !isCompletionReason(message.payload.reason)
+      ) {
+        return;
+      }
+      this.highestSequence = message.sequence;
       this.update({
         state: 'completed',
         count: message.payload.count,
         elapsedMs: message.payload.durationMs,
+        completedAt: this.clock(),
         result: {
           count: message.payload.count,
           durationMs: message.payload.durationMs,
           reason: message.payload.reason,
+          sequence: message.sequence,
         },
         error: null,
       });
-    } else if (message.messageType === MESSAGE_TYPES.STATE && this.currentSnapshot.state === 'active') {
-      if (message.payload.state === DEVICE_STATES.ACTIVE) {
-        this.update({ count: message.payload.count, elapsedMs: message.payload.elapsedMs });
+      return;
+    }
+
+    if (message.messageType === MESSAGE_TYPES.STATE && this.currentSnapshot.state === 'active') {
+      if (
+        message.payload.state !== DEVICE_STATES.ACTIVE ||
+        !isValidProgress(message.payload.count, message.payload.elapsedMs, this.currentSnapshot)
+      ) {
+        return;
       }
-    } else if (message.messageType === MESSAGE_TYPES.ERROR) {
+      this.highestSequence = message.sequence;
+      this.update({ count: message.payload.count, elapsedMs: message.payload.elapsedMs });
+      return;
+    }
+
+    if (message.messageType === MESSAGE_TYPES.ERROR) {
+      this.highestSequence = message.sequence;
       this.fail(new Error(`Device error 0x${message.payload.errorCode.toString(16)}`));
     }
   }
@@ -256,6 +296,7 @@ export class TrainingSessionController {
     this.highestSequence = state.sequence;
     this.update({
       state: 'active',
+      startedAt: this.currentSnapshot.startedAt ?? this.clock(),
       count: state.payload.count,
       elapsedMs: state.payload.elapsedMs,
       error: null,
@@ -265,6 +306,7 @@ export class TrainingSessionController {
   private isConnectionReady(): boolean {
     return (
       this.options.connection.snapshot.status === 'ready' &&
+      this.options.connection.snapshot.connectedDevice !== null &&
       this.options.connection.snapshot.deviceState?.state === DEVICE_STATES.READY
     );
   }
@@ -291,6 +333,18 @@ export class TrainingSessionController {
       listener(this.currentSnapshot);
     }
   }
+}
+
+function isValidProgress(count: number, elapsedMs: number, snapshot: TrainingSnapshot): boolean {
+  return (
+    count >= snapshot.count &&
+    count <= snapshot.targetCount &&
+    elapsedMs >= snapshot.elapsedMs
+  );
+}
+
+function isCompletionReason(reason: number): boolean {
+  return (Object.values(COMPLETION_REASONS) as number[]).includes(reason);
 }
 
 function normalizeNotes(notes: string): string {
