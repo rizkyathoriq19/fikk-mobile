@@ -4,7 +4,7 @@ import { useBluetooth } from '../features/bluetooth/BluetoothProvider';
 import { formatConnectionStatus, formatDeviceState } from '../features/bluetooth/labels';
 
 export function SettingsScreen() {
-  const { snapshot, scan, connect, disconnect } = useBluetooth();
+  const { snapshot, scan, connect, reconnectLastDevice, disconnect } = useBluetooth();
   const busy = ['requesting-permission', 'scanning', 'connecting', 'discovering'].includes(snapshot.status);
   const connected = snapshot.connectedDevice !== null;
 
@@ -29,6 +29,9 @@ export function SettingsScreen() {
       {snapshot.error && <Text style={styles.error}>{snapshot.error}</Text>}
       <View style={styles.buttonRow}>
         <Button disabled={busy} title={busy ? 'Working…' : 'Scan for devices'} onPress={() => void scan()} />
+        {snapshot.lastDeviceId && !connected && (
+          <Button disabled={busy} title="Reconnect last device" onPress={() => void reconnectLastDevice()} />
+        )}
         {connected && <Button title="Disconnect" onPress={() => void disconnect()} />}
       </View>
       {busy && <ActivityIndicator accessibilityLabel="Bluetooth operation in progress" style={styles.loader} />}

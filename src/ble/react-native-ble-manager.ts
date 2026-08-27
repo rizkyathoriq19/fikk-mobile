@@ -20,6 +20,7 @@ export type BleManagerSubscription = {
 export type BleManagerClient = {
   start(options?: { showAlert?: boolean }): Promise<void>;
   checkState(): Promise<string>;
+  onDisconnectPeripheral?: (callback: (event: { peripheral: string }) => void) => BleManagerSubscription;
   scan(options?: { serviceUUIDs?: string[]; seconds?: number; allowDuplicates?: boolean }): Promise<void>;
   stopScan(): Promise<void>;
   connect(peripheralId: string): Promise<void>;
@@ -38,11 +39,23 @@ export type BleManagerClient = {
 export class ReactNativeBleManagerTransport implements BleTransport {
   private connectedDevice: BleDevice | null = null;
   private discovered = false;
+  private readonly disconnectListeners = new Set<() => void>();
 
   constructor(
     private readonly client: BleManagerClient,
     private readonly profile: BleProfile,
-  ) {}
+  ) {
+    this.client.onDisconnectPeripheral?.(({ peripheral }) => {
+      if (this.connectedDevice?.id !== peripheral) {
+        return;
+      }
+      this.connectedDevice = null;
+      this.discovered = false;
+      for (const listener of this.disconnectListeners) {
+        listener();
+      }
+    });
+  }
 
   async initialize(): Promise<void> {
     await this.client.start({ showAlert: false });
@@ -180,6 +193,11 @@ export class ReactNativeBleManagerTransport implements BleTransport {
     await this.client.disconnect(peripheralId);
     this.connectedDevice = null;
     this.discovered = false;
+  }
+
+  onDisconnect(listener: () => void): () => void {
+    this.disconnectListeners.add(listener);
+    return () => this.disconnectListeners.delete(listener);
   }
 
   private matchesProfileService(peripheral: Peripheral): boolean {

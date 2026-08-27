@@ -247,3 +247,47 @@ test('native adapter disconnects the previous device before replacing it', async
 
   assert.deepEqual(calls, ['connect:device-1', 'disconnect:device-1', 'connect:device-2']);
 });
+
+test('native adapter forwards a peripheral disconnect event', async () => {
+  let disconnectListener: ((event: { peripheral: string }) => void) | undefined;
+  const client: BleManagerClient = {
+    start: async () => undefined,
+    checkState: async () => 'on',
+    scan: async () => undefined,
+    stopScan: async () => undefined,
+    connect: async () => undefined,
+    disconnect: async () => undefined,
+    retrieveServices: async () => discoveredInfo,
+    startNotification: async () => undefined,
+    stopNotification: async () => undefined,
+    read: async () => [],
+    write: async () => undefined,
+    onDiscoverPeripheral: () => ({ remove: () => undefined }),
+    onDidUpdateValueForCharacteristic: () => ({ remove: () => undefined }),
+    onDisconnectPeripheral: (callback) => {
+      disconnectListener = callback;
+      return { remove: () => undefined };
+    },
+  };
+  const profile = createBleProfile({
+    serviceUuid: 'service-1',
+    characteristics: {
+      CONTROL: 'control-1',
+      EVENT: 'event-1',
+      STATE: 'state-1',
+      DEVICE_INFO: 'info-1',
+    },
+  });
+  const transport = new ReactNativeBleManagerTransport(client, profile);
+  await transport.connect({ id: 'device-1', name: 'Fikk Trainer', rssi: -42, serviceUuids: ['service-1'] });
+
+  let disconnects = 0;
+  const unsubscribe = transport.onDisconnect(() => {
+    disconnects += 1;
+  });
+  disconnectListener?.({ peripheral: 'device-1' });
+
+  assert.equal(disconnects, 1);
+  await assert.rejects(() => transport.writeControl(Uint8Array.of(1)), /discovered connection/i);
+  unsubscribe();
+});

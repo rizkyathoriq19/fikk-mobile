@@ -12,7 +12,8 @@ export function HomeScreen() {
   const { snapshot: training, start } = useTraining();
   const [notes, setNotes] = useState('');
   const ready = bluetooth.status === 'ready' && bluetooth.deviceState?.state === 0;
-  const busy = training.state === 'starting' || training.state === 'active';
+  const recovering = training.state === 'recovering';
+  const busy = recovering || training.state === 'starting' || training.state === 'active';
 
   const handleStart = () => {
     if (!ready) {
@@ -47,10 +48,15 @@ export function HomeScreen() {
       <View style={styles.spacer} />
       <Button
         disabled={busy}
-        title={ready ? (busy ? 'Starting…' : 'Start Training') : 'Connect device first'}
+        title={recovering ? 'Recovering…' : ready ? (busy ? 'Starting…' : 'Start Training') : 'Connect device first'}
         onPress={handleStart}
       />
-      {!ready && <Text style={styles.helper}>Connect a ready device from Settings first.</Text>}
+      {recovering && (
+        <Text style={styles.recovery}>
+          Device disconnected — session may still be running on the device. Reconnecting and synchronizing…
+        </Text>
+      )}
+      {!ready && !recovering && <Text style={styles.helper}>Connect a ready device from Settings first.</Text>}
       {training.error && <Text style={styles.error}>{training.error}</Text>}
       {training.state === 'starting' && <Text style={styles.helper}>Waiting for device acknowledgement…</Text>}
       {training.state === 'active' && (
@@ -79,6 +85,7 @@ const styles = StyleSheet.create({
   counter: { marginTop: 4, textAlign: 'right', fontSize: 12, color: '#64748b' },
   spacer: { height: 16 },
   helper: { marginTop: 10, color: '#64748b' },
+  recovery: { marginTop: 12, padding: 12, color: '#92400e', backgroundColor: '#fef3c7', borderRadius: 8 },
   error: { marginTop: 12, padding: 12, color: '#b91c1c', backgroundColor: '#fee2e2', borderRadius: 8 },
   progress: { marginTop: 16, fontWeight: '600', color: '#0f172a' },
   resultButton: { marginTop: 12 },

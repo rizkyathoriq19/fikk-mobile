@@ -1,4 +1,4 @@
-import { decodeMessage, MESSAGE_TYPES, type DeviceState, type ProtocolMessage } from '../../protocol/codec';
+import { decodeMessage, encodeMessage, MESSAGE_TYPES, type DeviceState, type ProtocolMessage } from '../../protocol/codec';
 import type { BleProfile } from '../../ble/profile';
 import type { BleAdapterState, BleDevice, BleTransport } from '../../ble/transport';
 
@@ -66,9 +66,15 @@ export class BluetoothConnectionController {
   private readonly listeners = new Set<SnapshotListener>();
   private readonly messageListeners = new Set<ProtocolMessageListener>();
   private notificationUnsubscribers: Array<() => void> = [];
+  private readonly unsubscribeFromTransportDisconnect: () => void;
+  private lastKnownDevice: BleDevice | null = null;
   private initialized = false;
 
-  constructor(private readonly options: BluetoothConnectionControllerOptions) {}
+  constructor(private readonly options: BluetoothConnectionControllerOptions) {
+    this.unsubscribeFromTransportDisconnect = options.transport.onDisconnect(() => {
+      this.handleTransportDisconnect();
+    });
+  }
 
   get snapshot(): ConnectionSnapshot {
     return this.currentSnapshot;
@@ -137,6 +143,7 @@ export class BluetoothConnectionController {
       const deviceState = this.decodeState(stateBytes);
       const deviceInfo = decodeText(deviceInfoBytes);
       await this.options.deviceStore.save(device.id);
+      this.lastKnownDevice = device;
       this.notificationUnsubscribers = unsubscribers;
       this.update({
         status: 'ready',
@@ -171,8 +178,44 @@ export class BluetoothConnectionController {
     }
   }
 
+  async reconnectLastDevice(): Promise<void> {
+    const device = this.lastKnownDevice ?? this.currentSnapshot.devices.find((item) => item.id === this.currentSnapshot.lastDeviceId);
+    if (device === undefined) {
+      this.fail(new Error('No last BLE device is available for recovery'));
+      return;
+    }
+
+    for (const delayMs of [0, 250, 500]) {
+      if (delayMs > 0) {
+        await delay(delayMs);
+      }
+      await this.connect(device);
+      if (this.currentSnapshot.status === 'ready') {
+        return;
+      }
+    }
+
+    this.fail(new Error('Unable to reconnect to the last BLE device after bounded retries'));
+  }
+
+  sync(sessionId: number): Promise<void> {
+    if (this.currentSnapshot.status !== 'ready') {
+      return Promise.reject(new Error('Bluetooth device is not Ready for sync'));
+    }
+    return this.options.transport.writeControl(
+      encodeMessage({
+        version: 1,
+        messageType: MESSAGE_TYPES.SYNC,
+        sessionId,
+        sequence: 0,
+        payload: {},
+      }),
+    );
+  }
+
   dispose(): void {
     this.clearNotificationSubscriptions();
+    this.unsubscribeFromTransportDisconnect();
     this.listeners.clear();
     this.messageListeners.clear();
   }
@@ -201,6 +244,20 @@ export class BluetoothConnectionController {
       ? this.currentSnapshot.devices.map((item) => (item.id === device.id ? device : item))
       : [...this.currentSnapshot.devices, device];
     this.update({ devices });
+  }
+
+  private handleTransportDisconnect(): void {
+    if (this.currentSnapshot.connectedDevice === null) {
+      return;
+    }
+    this.clearNotificationSubscriptions();
+    this.update({
+      status: 'disconnected',
+      connectedDevice: null,
+      deviceInfo: null,
+      deviceState: null,
+      error: 'Device disconnected',
+    });
   }
 
   private handleNotification(value: Uint8Array): void {
@@ -249,6 +306,10 @@ export class BluetoothConnectionController {
       listener(this.currentSnapshot);
     }
   }
+}
+
+function delay(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 function decodeText(value: Uint8Array): string {

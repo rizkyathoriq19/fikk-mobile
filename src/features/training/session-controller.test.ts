@@ -10,6 +10,7 @@ import {
 import { ACK_STATUS, COMPLETION_REASONS } from '../../protocol/constants';
 import { FIKK_BLE_PROFILE } from '../../ble/fikk-profile';
 import type { BleAdapterState, BleDevice } from '../../ble/transport';
+import type { ConnectionSnapshot } from '../bluetooth/connection-controller';
 import type { TrainingSession, TrainingSessionRepository } from '../history/session-repository';
 import {
   TrainingSessionController,
@@ -24,7 +25,7 @@ const device: BleDevice = {
 };
 
 class FakeTrainingConnection implements TrainingConnection {
-  snapshot = {
+  snapshot: ConnectionSnapshot = {
     status: 'ready' as const,
     adapterState: 'on' as BleAdapterState,
     devices: [device] as readonly BleDevice[],
@@ -35,7 +36,9 @@ class FakeTrainingConnection implements TrainingConnection {
     error: null as string | null,
   };
   readonly writes: Uint8Array[] = [];
+  readonly recoveryCalls: string[] = [];
   private readonly listeners = new Set<(message: ProtocolMessage) => void>();
+  private readonly snapshotListeners = new Set<(snapshot: TrainingConnection['snapshot']) => void>();
   private stateBytes = encodeMessage({
     version: 1,
     messageType: MESSAGE_TYPES.STATE,
@@ -44,10 +47,34 @@ class FakeTrainingConnection implements TrainingConnection {
     payload: { state: DEVICE_STATES.READY, count: 0, elapsedMs: 0 },
   });
   onWrite: ((value: Uint8Array) => void) | null = null;
+  onReconnect: (() => Promise<void> | void) | null = null;
+  onSync: ((sessionId: number) => Promise<void> | void) | null = null;
 
   async writeControl(value: Uint8Array): Promise<void> {
     this.writes.push(new Uint8Array(value));
     this.onWrite?.(value);
+  }
+
+  async reconnectLastDevice(): Promise<void> {
+    this.recoveryCalls.push('reconnect');
+    await this.onReconnect?.();
+  }
+
+  async sync(sessionId: number): Promise<void> {
+    this.recoveryCalls.push(`sync:${sessionId}`);
+    await this.onSync?.(sessionId);
+  }
+
+  subscribe(listener: (snapshot: TrainingConnection['snapshot']) => void): () => void {
+    this.snapshotListeners.add(listener);
+    return () => this.snapshotListeners.delete(listener);
+  }
+
+  setConnectionSnapshot(patch: Partial<TrainingConnection['snapshot']>): void {
+    this.snapshot = { ...this.snapshot, ...patch };
+    for (const listener of this.snapshotListeners) {
+      listener(this.snapshot);
+    }
   }
 
   async read(): Promise<Uint8Array> {
@@ -381,4 +408,122 @@ test('Discard sends ACK_RESULT without persisting the completed result', async (
   });
   assert.equal(controller.snapshot.state, 'idle');
   assert.equal(controller.snapshot.sessionId, null);
+});
+
+async function waitForTrainingState(
+  controller: TrainingSessionController,
+  state: 'active' | 'completed' | 'error',
+): Promise<void> {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (controller.snapshot.state === state) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  assert.equal(controller.snapshot.state, state);
+}
+
+test('disconnect recovers an active session with SYNC and never sends START again', async () => {
+  const connection = new FakeTrainingConnection();
+  const controller = new TrainingSessionController({
+    connection,
+    sessionIdFactory: () => 77,
+    startAckTimeoutMs: 50,
+  });
+  const start = controller.start('active recovery');
+  await Promise.resolve();
+  connection.emit(acceptedStart(77));
+  await start;
+  connection.onReconnect = () => {
+    connection.setConnectionSnapshot({
+      status: 'ready',
+      connectedDevice: device,
+      deviceState: { state: DEVICE_STATES.ACTIVE, count: 2, elapsedMs: 900 },
+    });
+  };
+  connection.onSync = (sessionId) => {
+    connection.emit({
+      version: 1,
+      messageType: MESSAGE_TYPES.STATE,
+      sessionId,
+      sequence: 3,
+      payload: { state: DEVICE_STATES.ACTIVE, count: 2, elapsedMs: 900 },
+    });
+  };
+
+  connection.setConnectionSnapshot({ status: 'disconnected', connectedDevice: null, deviceState: null });
+  await waitForTrainingState(controller, 'active');
+
+  assert.equal(controller.snapshot.sessionId, 77);
+  assert.deepEqual(connection.recoveryCalls, ['reconnect', 'sync:77']);
+  assert.equal(connection.writes.length, 1);
+  assert.equal(controller.snapshot.count, 2);
+  assert.equal(controller.snapshot.elapsedMs, 900);
+});
+
+test('disconnect recovery surfaces a retained completed Result', async () => {
+  const connection = new FakeTrainingConnection();
+  let timestamp = 0;
+  const controller = new TrainingSessionController({
+    connection,
+    sessionIdFactory: () => 88,
+    clock: () => `recovery-${++timestamp}`,
+    startAckTimeoutMs: 50,
+  });
+  const start = controller.start('completed recovery');
+  await Promise.resolve();
+  connection.emit(acceptedStart(88));
+  await start;
+  connection.onReconnect = () => {
+    connection.setConnectionSnapshot({ status: 'ready', connectedDevice: device });
+  };
+  connection.onSync = (sessionId) => {
+    connection.emit({
+      version: 1,
+      messageType: MESSAGE_TYPES.STATE,
+      sessionId,
+      sequence: 3,
+      payload: { state: DEVICE_STATES.COMPLETED, count: 6, elapsedMs: 3200 },
+    });
+    connection.emit(complete(sessionId, 4, 6, 3200));
+  };
+
+  connection.setConnectionSnapshot({ status: 'disconnected', connectedDevice: null, deviceState: null });
+  await waitForTrainingState(controller, 'completed');
+
+  assert.equal(controller.snapshot.sessionId, 88);
+  assert.equal(controller.snapshot.result?.durationMs, 3200);
+  assert.equal(controller.snapshot.result?.sequence, 4);
+  assert.deepEqual(connection.recoveryCalls, ['reconnect', 'sync:88']);
+});
+
+test('disconnect recovery reports when the device no longer retains the session', async () => {
+  const connection = new FakeTrainingConnection();
+  const controller = new TrainingSessionController({
+    connection,
+    sessionIdFactory: () => 99,
+    startAckTimeoutMs: 50,
+  });
+  const start = controller.start('lost recovery');
+  await Promise.resolve();
+  connection.emit(acceptedStart(99));
+  await start;
+  connection.onReconnect = () => {
+    connection.setConnectionSnapshot({ status: 'ready', connectedDevice: device });
+  };
+  connection.onSync = () => {
+    connection.emit({
+      version: 1,
+      messageType: MESSAGE_TYPES.STATE,
+      sessionId: 0,
+      sequence: 3,
+      payload: { state: DEVICE_STATES.READY, count: 0, elapsedMs: 0 },
+    });
+  };
+
+  connection.setConnectionSnapshot({ status: 'disconnected', connectedDevice: null, deviceState: null });
+  await waitForTrainingState(controller, 'error');
+
+  assert.match(controller.snapshot.error ?? '', /no longer retains|start a new session/i);
+  assert.equal(controller.snapshot.sessionId, 99);
 });

@@ -14,6 +14,7 @@ type BluetoothContextValue = {
   snapshot: ConnectionSnapshot;
   scan(): Promise<void>;
   connect(device: BleDevice): Promise<void>;
+  reconnectLastDevice(): Promise<void>;
   disconnect(): Promise<void>;
 };
 
@@ -47,6 +48,7 @@ export function BluetoothProvider({ children }: PropsWithChildren) {
       connection: controller,
       scan: () => controller.scan(),
       connect: (device: BleDevice) => controller.connect(device),
+      reconnectLastDevice: () => controller.reconnectLastDevice(),
       disconnect: () => controller.disconnect(),
     }),
     [controller, snapshot],

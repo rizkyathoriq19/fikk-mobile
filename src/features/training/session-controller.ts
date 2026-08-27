@@ -11,7 +11,7 @@ import type { ConnectionSnapshot } from '../bluetooth/connection-controller';
 
 export const MVP_TARGET_COUNT = 6 as const;
 
-export type TrainingState = 'idle' | 'starting' | 'active' | 'completed' | 'error';
+export type TrainingState = 'idle' | 'starting' | 'recovering' | 'active' | 'completed' | 'error';
 
 export type TrainingResult = {
   count: number;
@@ -40,6 +40,9 @@ export interface TrainingConnection {
   readonly snapshot: ConnectionSnapshot;
   writeControl(value: Uint8Array): Promise<void>;
   read(channel: 'STATE'): Promise<Uint8Array>;
+  reconnectLastDevice(): Promise<void>;
+  sync(sessionId: number): Promise<void>;
+  subscribe(listener: (snapshot: ConnectionSnapshot) => void): () => void;
   subscribeMessages(listener: (message: ProtocolMessage) => void): () => void;
 }
 
@@ -49,6 +52,7 @@ type TrainingSessionControllerOptions = {
   sessionIdFactory?: () => number;
   clock?: () => string;
   startAckTimeoutMs?: number;
+  recoveryResponseTimeoutMs?: number;
 };
 
 type TrainingSnapshotPatch = Partial<TrainingSnapshot>;
@@ -56,6 +60,13 @@ type TrainingSnapshotListener = (snapshot: TrainingSnapshot) => void;
 type StateMessage = Extract<ProtocolMessage, { messageType: typeof MESSAGE_TYPES.STATE }>;
 
 type PendingStart = {
+  sessionId: number;
+  resolve: () => void;
+  reject: (error: Error) => void;
+  timeoutId: ReturnType<typeof setTimeout>;
+};
+
+type PendingRecovery = {
   sessionId: number;
   resolve: () => void;
   reject: (error: Error) => void;
@@ -91,15 +102,23 @@ export class TrainingSessionController {
   private readonly sessionIdFactory: () => number;
   private readonly clock: () => string;
   private readonly startAckTimeoutMs: number;
+  private readonly recoveryResponseTimeoutMs: number;
+  private readonly unsubscribeFromConnection: () => void;
   private readonly unsubscribeFromMessages: () => void;
   private pendingStart: PendingStart | null = null;
+  private pendingRecovery: PendingRecovery | null = null;
   private resultAction: Promise<TrainingSession> | null = null;
+  private recoveryAction: Promise<void> | null = null;
   private highestSequence = 0;
 
   constructor(private readonly options: TrainingSessionControllerOptions) {
     this.sessionIdFactory = options.sessionIdFactory ?? createSessionId;
     this.clock = options.clock ?? (() => new Date().toISOString());
     this.startAckTimeoutMs = options.startAckTimeoutMs ?? 3000;
+    this.recoveryResponseTimeoutMs = options.recoveryResponseTimeoutMs ?? 3000;
+    this.unsubscribeFromConnection = options.connection.subscribe((snapshot) => {
+      this.handleConnectionSnapshot(snapshot);
+    });
     this.unsubscribeFromMessages = options.connection.subscribeMessages((message) => this.handleMessage(message));
   }
 
@@ -220,8 +239,103 @@ export class TrainingSessionController {
 
   dispose(): void {
     this.clearPendingStart();
+    this.clearPendingRecovery();
+    this.unsubscribeFromConnection();
     this.unsubscribeFromMessages();
     this.listeners.clear();
+  }
+
+  private handleConnectionSnapshot(snapshot: ConnectionSnapshot): void {
+    const liveSession = this.currentSnapshot.state === 'starting' || this.currentSnapshot.state === 'active';
+    const disconnected = snapshot.status !== 'ready' || snapshot.connectedDevice === null;
+
+    if (liveSession && disconnected) {
+      this.update({
+        state: 'recovering',
+        error: 'Device disconnected — session may still be running on the device.',
+      });
+      this.beginRecovery();
+      return;
+    }
+
+    if (this.currentSnapshot.state === 'recovering' && !disconnected) {
+      this.beginRecovery();
+    }
+  }
+
+  private beginRecovery(): void {
+    if (this.recoveryAction !== null || this.currentSnapshot.sessionId === null) {
+      return;
+    }
+    const action = Promise.resolve().then(() => this.recover());
+    this.recoveryAction = action;
+    void action.finally(() => {
+      if (this.recoveryAction === action) {
+        this.recoveryAction = null;
+      }
+    });
+  }
+
+  private async recover(): Promise<void> {
+    const sessionId = this.currentSnapshot.sessionId;
+    if (sessionId === null) {
+      return;
+    }
+
+    try {
+      await this.options.connection.reconnectLastDevice();
+      if (
+        this.options.connection.snapshot.status !== 'ready' ||
+        this.options.connection.snapshot.connectedDevice === null
+      ) {
+        throw new Error('Unable to reconnect to the training device');
+      }
+
+      const response = this.waitForRecoveryResponse(sessionId);
+      await this.options.connection.sync(sessionId);
+      await response;
+    } catch (error) {
+      this.clearPendingRecovery();
+      this.fail(new Error(`Session recovery failed: ${toError(error).message}`));
+    }
+  }
+
+  private waitForRecoveryResponse(sessionId: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        if (this.pendingRecovery?.sessionId === sessionId) {
+          this.pendingRecovery = null;
+        }
+        reject(new Error('Timed out waiting for the device recovery state'));
+      }, this.recoveryResponseTimeoutMs);
+      this.pendingRecovery = { sessionId, resolve, reject, timeoutId };
+    });
+  }
+
+  private clearPendingRecovery(): void {
+    if (this.pendingRecovery === null) {
+      return;
+    }
+    clearTimeout(this.pendingRecovery.timeoutId);
+    this.pendingRecovery = null;
+  }
+
+  private resolveRecovery(): void {
+    const pendingRecovery = this.pendingRecovery;
+    if (pendingRecovery === null) {
+      return;
+    }
+    this.clearPendingRecovery();
+    pendingRecovery.resolve();
+  }
+
+  private rejectRecovery(error: Error): void {
+    const pendingRecovery = this.pendingRecovery;
+    if (pendingRecovery === null) {
+      return;
+    }
+    this.clearPendingRecovery();
+    pendingRecovery.reject(error);
   }
 
   private async persistResult(): Promise<TrainingSession> {
@@ -330,13 +444,27 @@ export class TrainingSessionController {
       return;
     }
 
+    if (
+      this.currentSnapshot.state === 'recovering' &&
+      message.messageType === MESSAGE_TYPES.STATE &&
+      message.payload.state === DEVICE_STATES.READY
+    ) {
+      const error = new Error('Device no longer retains this session; start a new session.');
+      this.rejectRecovery(error);
+      this.fail(error);
+      return;
+    }
+
     const sessionId = this.currentSnapshot.sessionId;
     if (sessionId === null || message.sessionId !== sessionId || !this.isNewSequence(message.sequence)) {
       return;
     }
 
-    if (message.messageType === MESSAGE_TYPES.PROGRESS && this.currentSnapshot.state === 'active') {
-      if (!isValidProgress(message.payload.count, message.payload.elapsedMs, this.currentSnapshot)) {
+    if (message.messageType === MESSAGE_TYPES.PROGRESS) {
+      if (
+        this.currentSnapshot.state !== 'active' ||
+        !isValidProgress(message.payload.count, message.payload.elapsedMs, this.currentSnapshot)
+      ) {
         return;
       }
       this.highestSequence = message.sequence;
@@ -344,7 +472,10 @@ export class TrainingSessionController {
       return;
     }
 
-    if (message.messageType === MESSAGE_TYPES.COMPLETE && this.currentSnapshot.state === 'active') {
+    if (
+      message.messageType === MESSAGE_TYPES.COMPLETE &&
+      (this.currentSnapshot.state === 'active' || this.currentSnapshot.state === 'recovering')
+    ) {
       if (
         !isValidProgress(message.payload.count, message.payload.durationMs, this.currentSnapshot) ||
         !isCompletionReason(message.payload.reason)
@@ -354,6 +485,7 @@ export class TrainingSessionController {
       this.highestSequence = message.sequence;
       this.update({
         state: 'completed',
+        startedAt: this.currentSnapshot.startedAt ?? this.clock(),
         count: message.payload.count,
         elapsedMs: message.payload.durationMs,
         completedAt: this.clock(),
@@ -365,10 +497,11 @@ export class TrainingSessionController {
         },
         error: null,
       });
+      this.resolveRecovery();
       return;
     }
 
-    if (message.messageType === MESSAGE_TYPES.STATE && this.currentSnapshot.state === 'active') {
+    if (message.messageType === MESSAGE_TYPES.STATE) {
       if (
         message.payload.state !== DEVICE_STATES.ACTIVE ||
         !isValidProgress(message.payload.count, message.payload.elapsedMs, this.currentSnapshot)
@@ -376,13 +509,22 @@ export class TrainingSessionController {
         return;
       }
       this.highestSequence = message.sequence;
-      this.update({ count: message.payload.count, elapsedMs: message.payload.elapsedMs });
+      this.update({
+        state: 'active',
+        startedAt: this.currentSnapshot.startedAt ?? this.clock(),
+        count: message.payload.count,
+        elapsedMs: message.payload.elapsedMs,
+        error: null,
+      });
+      this.resolveRecovery();
       return;
     }
 
     if (message.messageType === MESSAGE_TYPES.ERROR) {
       this.highestSequence = message.sequence;
-      this.fail(new Error(`Device error 0x${message.payload.errorCode.toString(16)}`));
+      const error = new Error(`Device error 0x${message.payload.errorCode.toString(16)}`);
+      this.rejectRecovery(error);
+      this.fail(error);
     }
   }
 
