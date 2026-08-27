@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Fikk Mobile",
+    "slug": "fikk-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "scheme": "fikk-mobile",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rizkyathoriq19.fikkmobile"
+    },
+    "android": {
+      "package": "com.rizkyathoriq19.fikkmobile"
+    },
+    "plugins": [
+      "expo-dev-client",
+      [
+        "react-native-ble-manager",
+        {
+          "neverForLocation": true,
+          "isBleRequired": true,
+          "bluetoothAlwaysPermission": "Allow Fikk Mobile to connect to training devices."
+        }
+      ]
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "fikk-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.ts",
+  "scripts": {
+    "test": "tsx --test \"src/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "expo:config": "expo config --type public"
+  },
+  "dependencies": {
+    "expo": "~57.0.17",
+    "expo-dev-client": "~57.0.16",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-ble-manager": "12.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "~19.2.4",
+    "babel-preset-expo": "~57.0.9",
+    "tsx": "^4.23.12",
+    "typescript": "~6.0.3"
+  }
+}
