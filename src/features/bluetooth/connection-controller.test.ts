@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { encodeMessage, MESSAGE_TYPES } from '../../protocol/codec';
+import { decodeMessage, encodeMessage, MESSAGE_TYPES } from '../../protocol/codec';
 import { FIKK_BLE_PROFILE } from '../../ble/fikk-profile';
 import { FakeBleTransport, type BleDevice } from '../../ble/transport';
 import {
@@ -141,4 +141,91 @@ test('invalid initial state does not leave a phantom connected device', async ()
   assert.equal(controller.snapshot.status, 'error');
   assert.equal(controller.snapshot.error, 'STATE characteristic returned a non-STATE message');
   assert.equal(controller.snapshot.connectedDevice, null);
+});
+
+test('scan with no compatible devices reports a recoverable no-device state', async () => {
+  const controller = new BluetoothConnectionController({
+    transport: new FakeBleTransport({ devices: [] }),
+    permissions: { request: async () => undefined },
+    deviceStore: { load: async () => null, save: async () => undefined },
+    profile: FIKK_BLE_PROFILE,
+  });
+
+  await controller.scan();
+
+  assert.equal(controller.snapshot.status, 'error');
+  assert.equal(controller.snapshot.error, 'No compatible BLE device found after the scan');
+});
+
+test('connection timeout becomes a recoverable error', async () => {
+  const transport = new (class extends FakeBleTransport {
+    async connect(): Promise<void> {
+      await new Promise<void>(() => undefined);
+    }
+  })();
+  const controller = new BluetoothConnectionController({
+    transport,
+    operationTimeoutMs: 5,
+    permissions: { request: async () => undefined },
+    deviceStore: { load: async () => null, save: async () => undefined },
+    profile: FIKK_BLE_PROFILE,
+  });
+
+  await controller.connect({
+    id: 'device-1',
+    name: 'Fikk-ESP32',
+    rssi: -42,
+    serviceUuids: [FIKK_BLE_PROFILE.serviceUuid],
+  });
+
+  assert.equal(controller.snapshot.status, 'error');
+  assert.equal(controller.snapshot.error, 'BLE connection timed out');
+});
+
+test('unexpected disconnect preserves identity, reconnects, and syncs the same session', async () => {
+  const device: BleDevice = {
+    id: 'device-1',
+    name: 'Fikk-ESP32',
+    rssi: -44,
+    serviceUuids: [FIKK_BLE_PROFILE.serviceUuid],
+  };
+  const state = encodeMessage({
+    version: 1,
+    messageType: MESSAGE_TYPES.STATE,
+    sessionId: 7,
+    sequence: 2,
+    payload: { state: 1, count: 2, elapsedMs: 900 },
+  });
+  const transport = new FakeBleTransport({
+    readValues: {
+      STATE: state,
+      DEVICE_INFO: Uint8Array.from(new TextEncoder().encode('firmware=0.1.0')),
+    },
+  });
+  const controller = new BluetoothConnectionController({
+    transport,
+    permissions: { request: async () => undefined },
+    deviceStore: { load: async () => null, save: async () => undefined },
+    profile: FIKK_BLE_PROFILE,
+  });
+
+  await controller.connect(device);
+  transport.emitDisconnect();
+
+  assert.equal(controller.snapshot.status, 'disconnected');
+  assert.equal(controller.snapshot.connectedDevice, null);
+  assert.equal(controller.snapshot.lastDeviceId, device.id);
+  assert.equal(controller.snapshot.error, 'Device disconnected');
+
+  await controller.reconnectLastDevice();
+  assert.equal(controller.snapshot.status, 'ready');
+  await controller.sync(7);
+
+  assert.deepEqual(decodeMessage(transport.controlWrites[0]), {
+    version: 1,
+    messageType: MESSAGE_TYPES.SYNC,
+    sessionId: 7,
+    sequence: 0,
+    payload: {},
+  });
 });

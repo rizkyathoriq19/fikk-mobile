@@ -10,9 +10,11 @@ import { nativeDeviceIdentityStore } from './native-device-store';
 import type { BleDevice } from '../../ble/transport';
 
 type BluetoothContextValue = {
+  connection: BluetoothConnectionController;
   snapshot: ConnectionSnapshot;
   scan(): Promise<void>;
   connect(device: BleDevice): Promise<void>;
+  reconnectLastDevice(): Promise<void>;
   disconnect(): Promise<void>;
 };
 
@@ -43,8 +45,10 @@ export function BluetoothProvider({ children }: PropsWithChildren) {
   const value = useMemo(
     () => ({
       snapshot,
+      connection: controller,
       scan: () => controller.scan(),
       connect: (device: BleDevice) => controller.connect(device),
+      reconnectLastDevice: () => controller.reconnectLastDevice(),
       disconnect: () => controller.disconnect(),
     }),
     [controller, snapshot],

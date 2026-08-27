@@ -11,6 +11,7 @@
 
 #include "BleProfile.h"
 #include "DeviceState.h"
+#include "InputDebouncer.h"
 #include "Protocol.h"
 
 using namespace FikkDevice;
@@ -44,6 +45,7 @@ class TrainingDevice {
   void begin();
   void loop();
   void handleControl(const uint8_t* data, size_t length);
+  void handleSensorLevel(bool sensorActive, uint32_t nowMs);
   void onClientConnected();
   void onClientDisconnected();
 
@@ -53,6 +55,7 @@ class TrainingDevice {
   void handleStop(const Packet& command);
   void handleSync(const Packet& command);
   void handleAckResult(const Packet& command);
+  void registerBallDetection();
   void completeSession(CompletionReason reason);
   void resetToReady();
   void runDevelopmentSimulation();
@@ -84,6 +87,7 @@ class TrainingDevice {
   uint32_t durationMs_ = 0;
   CompletionReason completionReason_ = CompletionReason::TargetReached;
   bool resultRetained_ = false;
+  BallDetectionDebouncer inputDebouncer_;
   uint32_t lastSimulationAtMs_ = 0;
 };
 
@@ -176,6 +180,12 @@ void TrainingDevice::onClientConnected() {
 
 void TrainingDevice::onClientDisconnected() {
   Serial.println("BLE client disconnected; logical session preserved");
+}
+
+void TrainingDevice::handleSensorLevel(bool sensorActive, uint32_t nowMs) {
+  if (inputDebouncer_.update(sensorActive, nowMs)) {
+    registerBallDetection();
+  }
 }
 
 void TrainingDevice::handleControl(const uint8_t* data, size_t length) {
@@ -310,6 +320,22 @@ void TrainingDevice::resetToReady() {
   sendState();
 }
 
+void TrainingDevice::registerBallDetection() {
+  if (deviceState_ != DeviceState::Active || count_ >= targetCount_) {
+    return;
+  }
+
+  ++count_;
+  Serial.println("BUZZER_FEEDBACK");
+  Serial.println("LED_FEEDBACK");
+  sendProgress();
+  if (count_ >= targetCount_) {
+    completeSession(CompletionReason::TargetReached);
+  } else {
+    sendState();
+  }
+}
+
 void TrainingDevice::runDevelopmentSimulation() {
   if (deviceState_ != DeviceState::Active) {
     return;
@@ -322,17 +348,11 @@ void TrainingDevice::runDevelopmentSimulation() {
   lastSimulationAtMs_ = now;
 
   if (count_ < targetCount_) {
-    ++count_;
     Serial.print("DEV SIMULATION count=");
-    Serial.print(static_cast<unsigned int>(count_));
+    Serial.print(static_cast<unsigned int>(count_ + 1));
     Serial.print('/');
     Serial.println(static_cast<unsigned int>(targetCount_));
-    sendProgress();
-    if (count_ >= targetCount_) {
-      completeSession(CompletionReason::TargetReached);
-    } else {
-      sendState();
-    }
+    registerBallDetection();
   }
 }
 

@@ -199,9 +199,11 @@ BLE disconnect callbacks do not alter the logical session. ACTIVE and COMPLETED 
 
 The physical sensor and GPIO wiring are not specified, so this firmware does not assume or configure any sensor pins.
 
-With `FIKK_DEV_SIMULATION=1`, while ACTIVE the device increments the count once every 2 seconds, emits PROGRESS, updates the STATE characteristic, and emits COMPLETE at the requested target count. The default mobile target is six.
+`BallDetectionDebouncer` is a hardware-agnostic input seam. A future GPIO adapter should pass its boolean sensor level and a monotonic timestamp to `TrainingDevice::handleSensorLevel()`. A rising level is accepted once, repeated high samples are ignored, and a new pulse inside the debounce window is rejected.
 
-Simulation is isolated from the BLE callbacks and protocol codec. A future physical input can call the same progress/completion behavior without changing the wire contract.
+With `FIKK_DEV_SIMULATION=1`, while ACTIVE the device increments the count once every 2 seconds through the same `registerBallDetection()` path used by sensor input. Every accepted detection emits `BUZZER_FEEDBACK`, `LED_FEEDBACK`, and PROGRESS; the sixth detection emits one COMPLETE and retains the result. The default mobile target is six.
+
+Actual buzzer, LED, and sensor GPIO wiring remain pending until the physical hardware pinout is supplied. The wire contract and session ownership do not depend on those pin assignments.
 
 ## Serial debugging
 

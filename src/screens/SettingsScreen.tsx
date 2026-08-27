@@ -4,7 +4,7 @@ import { useBluetooth } from '../features/bluetooth/BluetoothProvider';
 import { formatConnectionStatus, formatDeviceState } from '../features/bluetooth/labels';
 
 export function SettingsScreen() {
-  const { snapshot, scan, connect, disconnect } = useBluetooth();
+  const { snapshot, scan, connect, reconnectLastDevice, disconnect } = useBluetooth();
   const busy = ['requesting-permission', 'scanning', 'connecting', 'discovering'].includes(snapshot.status);
   const connected = snapshot.connectedDevice !== null;
 
@@ -15,9 +15,13 @@ export function SettingsScreen() {
       </Text>
       <Text style={styles.sectionTitle}>Bluetooth</Text>
       <Text style={styles.label}>Adapter</Text>
-      <Text style={styles.value}>{snapshot.adapterState}</Text>
+      <Text accessibilityLiveRegion="polite" style={styles.value}>
+        {snapshot.adapterState}
+      </Text>
       <Text style={styles.label}>Connection</Text>
-      <Text style={styles.value}>{formatConnectionStatus(snapshot)}</Text>
+      <Text accessibilityLiveRegion="polite" style={styles.value}>
+        {formatConnectionStatus(snapshot)}
+      </Text>
       {snapshot.lastDeviceId && (
         <>
           <Text style={styles.label}>Last device</Text>
@@ -26,10 +30,35 @@ export function SettingsScreen() {
           </Text>
         </>
       )}
-      {snapshot.error && <Text style={styles.error}>{snapshot.error}</Text>}
+      {snapshot.error && (
+        <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.error}>
+          {snapshot.error}
+        </Text>
+      )}
       <View style={styles.buttonRow}>
-        <Button disabled={busy} title={busy ? 'Working…' : 'Scan for devices'} onPress={() => void scan()} />
-        {connected && <Button title="Disconnect" onPress={() => void disconnect()} />}
+        <Button
+          accessibilityLabel="Scan for compatible devices"
+          accessibilityState={{ busy, disabled: busy }}
+          disabled={busy}
+          title={busy ? 'Working…' : 'Scan for devices'}
+          onPress={() => void scan()}
+        />
+        {snapshot.lastDeviceId && !connected && (
+          <Button
+            accessibilityLabel="Reconnect last device"
+            accessibilityState={{ busy, disabled: busy }}
+            disabled={busy}
+            title="Reconnect last device"
+            onPress={() => void reconnectLastDevice()}
+          />
+        )}
+        {connected && (
+          <Button
+            accessibilityLabel="Disconnect current device"
+            title="Disconnect"
+            onPress={() => void disconnect()}
+          />
+        )}
       </View>
       {busy && <ActivityIndicator accessibilityLabel="Bluetooth operation in progress" style={styles.loader} />}
 
@@ -43,6 +72,8 @@ export function SettingsScreen() {
             <Text style={styles.deviceMeta}>RSSI: {device.rssi ?? 'unknown'}</Text>
           </View>
           <Button
+            accessibilityLabel={`${snapshot.connectedDevice?.id === device.id ? 'Connected to' : 'Connect to'} ${device.name ?? 'unnamed device'}`}
+            accessibilityState={{ disabled: busy || snapshot.connectedDevice?.id === device.id }}
             disabled={busy || snapshot.connectedDevice?.id === device.id}
             title={snapshot.connectedDevice?.id === device.id ? 'Connected' : 'Connect'}
             onPress={() => void connect(device)}

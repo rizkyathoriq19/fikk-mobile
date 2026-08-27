@@ -23,7 +23,8 @@
           "bluetoothAlwaysPermission": "Allow Fikk Mobile to connect to training devices."
         }
       ],
-      "expo-router"
+      "expo-router",
+      "expo-sqlite"
     ]
   }
 }

@@ -32,6 +32,7 @@ export interface BleTransport {
   read(channel: ReadChannel): Promise<Uint8Array>;
   writeControl(value: Uint8Array): Promise<void>;
   disconnect(): Promise<void>;
+  onDisconnect(listener: () => void): () => void;
 }
 
 type FakeBleTransportOptions = {
@@ -46,6 +47,7 @@ export class FakeBleTransport implements BleTransport {
   private readonly devices: readonly BleDevice[];
   private readonly readValues: Partial<Record<ReadChannel, Uint8Array>>;
   private readonly listeners = new Map<NotificationChannel, Set<(value: Uint8Array) => void>>();
+  private readonly disconnectListeners = new Set<() => void>();
   private adapterState: BleAdapterState;
   private connectedDevice: BleDevice | null = null;
   private discovered = false;
@@ -133,6 +135,19 @@ export class FakeBleTransport implements BleTransport {
   async disconnect(): Promise<void> {
     this.connectedDevice = null;
     this.discovered = false;
+  }
+
+  onDisconnect(listener: () => void): () => void {
+    this.disconnectListeners.add(listener);
+    return () => this.disconnectListeners.delete(listener);
+  }
+
+  emitDisconnect(): void {
+    this.connectedDevice = null;
+    this.discovered = false;
+    for (const listener of this.disconnectListeners) {
+      listener();
+    }
   }
 
   emit(channel: NotificationChannel, value: Uint8Array): void {
