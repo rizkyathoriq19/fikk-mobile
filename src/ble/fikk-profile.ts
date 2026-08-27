@@ -1,4 +1,4 @@
-import { createBleProfile } from './profile.js';
+import { createBleProfile } from './profile';
 
 export const FIKK_BLE_UUIDS = {
   service: 'c8c5aefd-0e30-525e-9bf9-5243913c8127',

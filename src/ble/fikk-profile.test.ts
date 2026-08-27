@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { FIKK_BLE_PROFILE, FIKK_BLE_UUIDS } from './fikk-profile.js';
+import { FIKK_BLE_PROFILE, FIKK_BLE_UUIDS } from './fikk-profile';
 
 test('Fikk BLE profile exposes stable shared UUIDs', () => {
   assert.deepEqual(FIKK_BLE_PROFILE, {

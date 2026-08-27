@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ACK_STATUS, COMPLETION_REASONS, ERROR_CODES, STOP_REASONS } from './constants.js';
+import { ACK_STATUS, COMPLETION_REASONS, ERROR_CODES, STOP_REASONS } from './constants';
 
 test('semantic protocol values match the firmware contract', () => {
   assert.deepEqual(ACK_STATUS, {

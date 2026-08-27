@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { decodeMessage, encodeMessage, MESSAGE_TYPES } from './codec.js';
+import { decodeMessage, encodeMessage, MESSAGE_TYPES } from './codec';
 
 test('START messages round-trip with little-endian session fields', () => {
   const message = {

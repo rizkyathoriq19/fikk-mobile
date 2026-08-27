@@ -5,9 +5,9 @@ import type {
   Peripheral,
   PeripheralInfo,
 } from 'react-native-ble-manager';
-import type { BleManagerClient } from './react-native-ble-manager.js';
-import { ReactNativeBleManagerTransport } from './react-native-ble-manager.js';
-import { createBleProfile } from './profile.js';
+import type { BleManagerClient } from './react-native-ble-manager';
+import { ReactNativeBleManagerTransport } from './react-native-ble-manager';
+import { createBleProfile } from './profile';
 
 const discoveredInfo: PeripheralInfo = {
   id: 'device-1',
@@ -208,4 +208,42 @@ test('native adapter rejects a connection missing required GATT characteristics'
 
   await assert.rejects(() => transport.discover(), /required GATT characteristics missing.*EVENT/i);
   await assert.rejects(() => transport.writeControl(Uint8Array.of(1)), /discovered connection/i);
+});
+
+test('native adapter disconnects the previous device before replacing it', async () => {
+  const calls: string[] = [];
+  const client: BleManagerClient = {
+    start: async () => undefined,
+    checkState: async () => 'on',
+    scan: async () => undefined,
+    stopScan: async () => undefined,
+    connect: async (id) => {
+      calls.push(`connect:${id}`);
+    },
+    disconnect: async (id) => {
+      calls.push(`disconnect:${id}`);
+    },
+    retrieveServices: async () => discoveredInfo,
+    startNotification: async () => undefined,
+    stopNotification: async () => undefined,
+    read: async () => [],
+    write: async () => undefined,
+    onDiscoverPeripheral: () => ({ remove: () => undefined }),
+    onDidUpdateValueForCharacteristic: () => ({ remove: () => undefined }),
+  };
+  const profile = createBleProfile({
+    serviceUuid: 'service-1',
+    characteristics: {
+      CONTROL: 'control-1',
+      EVENT: 'event-1',
+      STATE: 'state-1',
+      DEVICE_INFO: 'info-1',
+    },
+  });
+  const transport = new ReactNativeBleManagerTransport(client, profile);
+
+  await transport.connect({ id: 'device-1', name: 'One', rssi: -42, serviceUuids: ['service-1'] });
+  await transport.connect({ id: 'device-2', name: 'Two', rssi: -43, serviceUuids: ['service-1'] });
+
+  assert.deepEqual(calls, ['connect:device-1', 'disconnect:device-1', 'connect:device-2']);
 });

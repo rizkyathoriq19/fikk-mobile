@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { FakeBleTransport } from './transport.js';
+import { FakeBleTransport } from './transport';
 
 test('fake transport supports scan, discovery, notifications, and control writes', async () => {
   const device = { id: 'device-1', name: 'Fikk Trainer', rssi: -42, serviceUuids: ['service-1'] };

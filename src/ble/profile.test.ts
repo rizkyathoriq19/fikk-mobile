@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createBleProfile } from './profile.js';
+import { createBleProfile } from './profile';
 
 test('BLE profiles trim and retain all required characteristic UUIDs', () => {
   const profile = createBleProfile({

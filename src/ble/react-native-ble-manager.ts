@@ -10,8 +10,8 @@ import type {
   BleTransport,
   NotificationChannel,
   ReadChannel,
-} from './transport.js';
-import type { BleProfile } from './profile.js';
+} from './transport';
+import type { BleProfile } from './profile';
 
 export type BleManagerSubscription = {
   remove(): void;
