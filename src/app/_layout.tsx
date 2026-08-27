@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
-import { BluetoothProvider } from '../src/features/bluetooth/BluetoothProvider';
+import { BluetoothProvider } from '../features/bluetooth/BluetoothProvider';
 
 export default function RootLayout() {
   return (
