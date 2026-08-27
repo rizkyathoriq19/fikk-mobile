@@ -667,3 +667,52 @@ test('relaunch recovery failure preserves the unresolved session without fabrica
   assert.equal(restored.snapshot.result, null);
   assert.match(restored.snapshot.error ?? '', /unable to reconnect|recovery failed/i);
 });
+
+test('device ERROR aborts pending START without a timeout retry', async () => {
+  const connection = new FakeTrainingConnection();
+  const controller = new TrainingSessionController({
+    connection,
+    sessionIdFactory: () => 321,
+    startAckTimeoutMs: 20,
+  });
+  const start = controller.start('device error');
+  await Promise.resolve();
+
+  connection.emit({
+    version: 1,
+    messageType: MESSAGE_TYPES.ERROR,
+    sessionId: 321,
+    sequence: 1,
+    payload: { errorCode: 0x0002 },
+  });
+
+  await assert.rejects(() => start, /Device error 0x2/);
+  await new Promise((resolve) => setTimeout(resolve, 25));
+  assert.equal(connection.writes.length, 1);
+  assert.equal(controller.snapshot.state, 'error');
+});
+
+test('device ERROR stops an active session without creating a result', async () => {
+  const connection = new FakeTrainingConnection();
+  const controller = new TrainingSessionController({
+    connection,
+    sessionIdFactory: () => 654,
+    startAckTimeoutMs: 50,
+  });
+  const start = controller.start('active device error');
+  await Promise.resolve();
+  connection.emit(acceptedStart(654));
+  await start;
+
+  connection.emit({
+    version: 1,
+    messageType: MESSAGE_TYPES.ERROR,
+    sessionId: 654,
+    sequence: 2,
+    payload: { errorCode: 0x0004 },
+  });
+
+  assert.equal(controller.snapshot.state, 'error');
+  assert.equal(controller.snapshot.result, null);
+  assert.match(controller.snapshot.error ?? '', /Device error 0x4/);
+});

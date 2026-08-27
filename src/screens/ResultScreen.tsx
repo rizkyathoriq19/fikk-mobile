@@ -75,12 +75,28 @@ export function ResultScreen() {
       <ResultField label="Device" value={snapshot.deviceName ?? 'Unknown device'} />
       <ResultField label="Completion reason" value={formatCompletionReason(result.reason)} />
 
-      {actionError && <Text style={styles.error}>{actionError}</Text>}
+      {actionError && (
+        <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.error}>
+          {actionError}
+        </Text>
+      )}
       <View style={styles.button}>
-        <Button disabled={busy} title={action === 'save' ? 'Saving…' : 'Save Result'} onPress={handleSave} />
+        <Button
+          accessibilityLabel="Save training result"
+          accessibilityState={{ busy: action === 'save', disabled: busy }}
+          disabled={busy}
+          title={action === 'save' ? 'Saving…' : 'Save Result'}
+          onPress={handleSave}
+        />
       </View>
       <View style={styles.secondaryButton}>
-        <Button disabled={busy} title={action === 'discard' ? 'Discarding…' : 'Discard'} onPress={handleDiscard} />
+        <Button
+          accessibilityLabel="Discard training result"
+          accessibilityState={{ busy: action === 'discard', disabled: busy }}
+          disabled={busy}
+          title={action === 'discard' ? 'Discarding…' : 'Discard'}
+          onPress={handleDiscard}
+        />
       </View>
     </Screen>
   );

@@ -53,7 +53,11 @@ export function HistoryDetailScreen() {
         Session Detail
       </Text>
       {loading && <ActivityIndicator style={styles.loading} />}
-      {error && <Text style={styles.error}>{error}</Text>}
+      {error && (
+        <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.error}>
+          {error}
+        </Text>
+      )}
       {!loading && !error && session === null && (
         <Text style={styles.helper}>This session is no longer available.</Text>
       )}
@@ -72,7 +76,11 @@ export function HistoryDetailScreen() {
         </>
       )}
       <View style={styles.button}>
-        <Button title="Back to History" onPress={() => router.replace('/history')} />
+        <Button
+          accessibilityLabel="Back to History"
+          title="Back to History"
+          onPress={() => router.replace('/history')}
+        />
       </View>
     </Screen>
   );

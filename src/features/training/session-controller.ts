@@ -533,6 +533,18 @@ export class TrainingSessionController {
     }
 
     if (
+      message.messageType === MESSAGE_TYPES.ERROR &&
+      pendingStart !== null &&
+      message.sessionId === pendingStart.sessionId
+    ) {
+      const error = new Error(`Device error 0x${message.payload.errorCode.toString(16)}`);
+      this.clearPendingStart();
+      pendingStart.reject(error);
+      this.fail(error);
+      return;
+    }
+
+    if (
       this.currentSnapshot.state === 'recovering' &&
       message.messageType === MESSAGE_TYPES.STATE &&
       message.payload.state === DEVICE_STATES.READY

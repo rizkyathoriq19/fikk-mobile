@@ -62,6 +62,7 @@ export function HistoryScreen() {
           key={session.id}
           accessibilityLabel={`Open training session from ${formatDate(session.completedAt)}`}
           accessibilityRole="button"
+          accessibilityState={{ disabled: false }}
           onPress={() => router.push(`/history/${session.id}`)}
           style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
         >

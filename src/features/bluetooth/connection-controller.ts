@@ -44,6 +44,7 @@ type BluetoothConnectionControllerOptions = {
   permissions: BluetoothPermissionGateway;
   deviceStore: DeviceIdentityStore;
   profile: BleProfile;
+  operationTimeoutMs?: number;
 };
 
 type SnapshotPatch = Partial<ConnectionSnapshot>;
@@ -67,10 +68,12 @@ export class BluetoothConnectionController {
   private readonly messageListeners = new Set<ProtocolMessageListener>();
   private notificationUnsubscribers: Array<() => void> = [];
   private readonly unsubscribeFromTransportDisconnect: () => void;
+  private readonly operationTimeoutMs: number;
   private lastKnownDevice: BleDevice | null = null;
   private initialized = false;
 
   constructor(private readonly options: BluetoothConnectionControllerOptions) {
+    this.operationTimeoutMs = options.operationTimeoutMs ?? 10_000;
     this.unsubscribeFromTransportDisconnect = options.transport.onDisconnect(() => {
       this.handleTransportDisconnect();
     });
@@ -107,13 +110,21 @@ export class BluetoothConnectionController {
     try {
       await this.ensureInitialized();
       this.update({ status: 'scanning', devices: [], error: null });
-      await this.options.transport.scan({
-        serviceUuid: this.options.profile.serviceUuid,
-        seconds: 5,
-        onDevice: (device) => this.addDevice(device),
-      });
+      await withTimeout(
+        this.options.transport.scan({
+          serviceUuid: this.options.profile.serviceUuid,
+          seconds: 5,
+          onDevice: (device) => this.addDevice(device),
+        }),
+        this.operationTimeoutMs,
+        'BLE scan timed out',
+      );
       if (this.currentSnapshot.status === 'scanning') {
-        this.update({ status: 'disconnected' });
+        this.update(
+          this.currentSnapshot.devices.length === 0
+            ? { status: 'error', error: 'No compatible BLE device found after the scan' }
+            : { status: 'disconnected' },
+        );
       }
     } catch (error) {
       this.fail(error);
@@ -125,21 +136,33 @@ export class BluetoothConnectionController {
     try {
       await this.ensureInitialized();
       this.update({ status: 'connecting', connectedDevice: null, error: null });
-      await this.options.transport.connect(device);
+      await withTimeout(this.options.transport.connect(device), this.operationTimeoutMs, 'BLE connection timed out');
       this.update({ status: 'discovering', connectedDevice: device });
-      await this.options.transport.discover();
+      await withTimeout(this.options.transport.discover(), this.operationTimeoutMs, 'GATT discovery timed out');
 
       unsubscribers.push(
-        await this.options.transport.subscribe('EVENT', (value) => this.handleNotification(value)),
+        await withTimeout(
+          this.options.transport.subscribe('EVENT', (value) => this.handleNotification(value)),
+          this.operationTimeoutMs,
+          'EVENT subscription timed out',
+        ),
       );
       unsubscribers.push(
-        await this.options.transport.subscribe('STATE', (value) => this.handleNotification(value)),
+        await withTimeout(
+          this.options.transport.subscribe('STATE', (value) => this.handleNotification(value)),
+          this.operationTimeoutMs,
+          'STATE subscription timed out',
+        ),
       );
 
-      const [deviceInfoBytes, stateBytes] = await Promise.all([
-        this.options.transport.read('DEVICE_INFO'),
-        this.options.transport.read('STATE'),
-      ]);
+      const [deviceInfoBytes, stateBytes] = await withTimeout(
+        Promise.all([
+          this.options.transport.read('DEVICE_INFO'),
+          this.options.transport.read('STATE'),
+        ]),
+        this.operationTimeoutMs,
+        'Device synchronization timed out',
+      );
       const deviceState = this.decodeState(stateBytes);
       const deviceInfo = decodeText(deviceInfoBytes);
       await this.options.deviceStore.save(device.id);
@@ -310,6 +333,14 @@ export class BluetoothConnectionController {
 
 function delay(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function withTimeout<T>(operation: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+  return Promise.race([operation, timeout]).finally(() => clearTimeout(timeoutId));
 }
 
 function decodeText(value: Uint8Array): string {

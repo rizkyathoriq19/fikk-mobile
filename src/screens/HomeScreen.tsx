@@ -30,7 +30,9 @@ export function HomeScreen() {
       </Text>
       <Text style={styles.sectionTitle}>Home</Text>
       <Text style={styles.label}>Device status</Text>
-      <Text style={styles.value}>{formatConnectionStatus(bluetooth)}</Text>
+      <Text accessibilityLiveRegion="polite" style={styles.value}>
+        {formatConnectionStatus(bluetooth)}
+      </Text>
 
       <Text style={styles.label}>Training notes</Text>
       <TextInput
@@ -39,6 +41,7 @@ export function HomeScreen() {
         maxLength={500}
         onChangeText={setNotes}
         placeholder="Optional notes"
+        accessibilityHint="Optional multiline notes for this training session, up to 500 characters"
         style={styles.notes}
         textAlignVertical="top"
         value={notes}
@@ -47,17 +50,31 @@ export function HomeScreen() {
 
       <View style={styles.spacer} />
       <Button
+        accessibilityLabel={
+          recovering
+            ? 'Recovering training session'
+            : training.state === 'active'
+              ? 'Training session active'
+              : ready
+                ? 'Start training'
+                : 'Connect device first'
+        }
+        accessibilityState={{ busy: recovering || training.state === 'starting', disabled: busy }}
         disabled={busy}
         title={recovering ? 'Recovering…' : ready ? (busy ? 'Starting…' : 'Start Training') : 'Connect device first'}
         onPress={handleStart}
       />
       {recovering && (
-        <Text style={styles.recovery}>
+        <Text accessibilityLiveRegion="polite" style={styles.recovery}>
           Device disconnected — session may still be running on the device. Reconnecting and synchronizing…
         </Text>
       )}
       {!ready && !recovering && <Text style={styles.helper}>Connect a ready device from Settings first.</Text>}
-      {training.error && <Text style={styles.error}>{training.error}</Text>}
+      {training.error && (
+        <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.error}>
+          {training.error}
+        </Text>
+      )}
       {training.state === 'starting' && <Text style={styles.helper}>Waiting for device acknowledgement…</Text>}
       {training.state === 'active' && (
         <Text style={styles.progress}>
@@ -68,7 +85,11 @@ export function HomeScreen() {
         <>
           <Text style={styles.progress}>Training complete.</Text>
           <View style={styles.resultButton}>
-            <Button title="View Result" onPress={() => router.push('/result')} />
+            <Button
+              accessibilityLabel="View training result"
+              title="View Result"
+              onPress={() => router.push('/result')}
+            />
           </View>
         </>
       )}

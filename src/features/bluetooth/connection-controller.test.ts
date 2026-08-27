@@ -143,6 +143,45 @@ test('invalid initial state does not leave a phantom connected device', async ()
   assert.equal(controller.snapshot.connectedDevice, null);
 });
 
+test('scan with no compatible devices reports a recoverable no-device state', async () => {
+  const controller = new BluetoothConnectionController({
+    transport: new FakeBleTransport({ devices: [] }),
+    permissions: { request: async () => undefined },
+    deviceStore: { load: async () => null, save: async () => undefined },
+    profile: FIKK_BLE_PROFILE,
+  });
+
+  await controller.scan();
+
+  assert.equal(controller.snapshot.status, 'error');
+  assert.equal(controller.snapshot.error, 'No compatible BLE device found after the scan');
+});
+
+test('connection timeout becomes a recoverable error', async () => {
+  const transport = new (class extends FakeBleTransport {
+    async connect(): Promise<void> {
+      await new Promise<void>(() => undefined);
+    }
+  })();
+  const controller = new BluetoothConnectionController({
+    transport,
+    operationTimeoutMs: 5,
+    permissions: { request: async () => undefined },
+    deviceStore: { load: async () => null, save: async () => undefined },
+    profile: FIKK_BLE_PROFILE,
+  });
+
+  await controller.connect({
+    id: 'device-1',
+    name: 'Fikk-ESP32',
+    rssi: -42,
+    serviceUuids: [FIKK_BLE_PROFILE.serviceUuid],
+  });
+
+  assert.equal(controller.snapshot.status, 'error');
+  assert.equal(controller.snapshot.error, 'BLE connection timed out');
+});
+
 test('unexpected disconnect preserves identity, reconnects, and syncs the same session', async () => {
   const device: BleDevice = {
     id: 'device-1',
