@@ -1,4 +1,4 @@
-import { decodeMessage, MESSAGE_TYPES, type DeviceState } from '../../protocol/codec';
+import { decodeMessage, MESSAGE_TYPES, type DeviceState, type ProtocolMessage } from '../../protocol/codec';
 import type { BleProfile } from '../../ble/profile';
 import type { BleAdapterState, BleDevice, BleTransport } from '../../ble/transport';
 
@@ -37,6 +37,8 @@ export interface DeviceIdentityStore {
   save(deviceId: string): Promise<void>;
 }
 
+export type ProtocolMessageListener = (message: ProtocolMessage) => void;
+
 type BluetoothConnectionControllerOptions = {
   transport: BleTransport;
   permissions: BluetoothPermissionGateway;
@@ -62,6 +64,7 @@ const initialSnapshot: ConnectionSnapshot = {
 export class BluetoothConnectionController {
   private currentSnapshot: ConnectionSnapshot = initialSnapshot;
   private readonly listeners = new Set<SnapshotListener>();
+  private readonly messageListeners = new Set<ProtocolMessageListener>();
   private notificationUnsubscribers: Array<() => void> = [];
   private initialized = false;
 
@@ -74,6 +77,19 @@ export class BluetoothConnectionController {
   subscribe(listener: SnapshotListener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  subscribeMessages(listener: ProtocolMessageListener): () => void {
+    this.messageListeners.add(listener);
+    return () => this.messageListeners.delete(listener);
+  }
+
+  read(channel: 'STATE' | 'DEVICE_INFO'): Promise<Uint8Array> {
+    return this.options.transport.read(channel);
+  }
+
+  writeControl(value: Uint8Array): Promise<void> {
+    return this.options.transport.writeControl(value);
   }
 
   async loadLastDevice(): Promise<void> {
@@ -158,6 +174,7 @@ export class BluetoothConnectionController {
   dispose(): void {
     this.clearNotificationSubscriptions();
     this.listeners.clear();
+    this.messageListeners.clear();
   }
 
   private async ensureInitialized(): Promise<void> {
@@ -189,6 +206,9 @@ export class BluetoothConnectionController {
   private handleNotification(value: Uint8Array): void {
     try {
       const message = decodeMessage(value);
+      for (const listener of this.messageListeners) {
+        listener(message);
+      }
       if (message.messageType === MESSAGE_TYPES.STATE) {
         this.update({ deviceState: message.payload });
       } else if (message.messageType === MESSAGE_TYPES.ERROR) {
