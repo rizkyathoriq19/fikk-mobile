@@ -19,3 +19,7 @@ minimumReleaseAgeExclude:
   - expo-modules-core@57.0.14
   - expo-modules-jsi@57.0.6
   - expo@57.0.17
+  - '@expo/metro-runtime@57.0.14'
+  - '@expo/ui@57.0.14'
+  - expo-linking@57.0.8
+  - expo-router@57.0.17
