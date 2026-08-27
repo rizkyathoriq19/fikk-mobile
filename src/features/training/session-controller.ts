@@ -7,6 +7,7 @@ import {
 } from '../../protocol/codec';
 import { ACK_STATUS, COMPLETION_REASONS } from '../../protocol/constants';
 import type { TrainingSession, TrainingSessionRepository } from '../history/session-repository';
+import type { PersistedTrainingSession, TrainingSessionStore } from './session-store';
 import type { ConnectionSnapshot } from '../bluetooth/connection-controller';
 
 export const MVP_TARGET_COUNT = 6 as const;
@@ -49,6 +50,7 @@ export interface TrainingConnection {
 type TrainingSessionControllerOptions = {
   connection: TrainingConnection;
   repository?: TrainingSessionRepository;
+  sessionStore?: TrainingSessionStore;
   sessionIdFactory?: () => number;
   clock?: () => string;
   startAckTimeoutMs?: number;
@@ -109,6 +111,8 @@ export class TrainingSessionController {
   private pendingRecovery: PendingRecovery | null = null;
   private resultAction: Promise<TrainingSession> | null = null;
   private recoveryAction: Promise<void> | null = null;
+  private completedRecoveryAction: Promise<void> | null = null;
+  private persistenceChain: Promise<void> = Promise.resolve();
   private highestSequence = 0;
 
   constructor(private readonly options: TrainingSessionControllerOptions) {
@@ -160,6 +164,55 @@ export class TrainingSessionController {
     return this.requireRepository().get(id);
   }
 
+  async restore(): Promise<void> {
+    const sessionStore = this.options.sessionStore;
+    if (sessionStore === undefined) {
+      return;
+    }
+    let persisted: PersistedTrainingSession | null;
+    try {
+      persisted = await sessionStore.load();
+    } catch (error) {
+      this.currentSnapshot = {
+        ...this.currentSnapshot,
+        state: 'error',
+        error: `Unable to restore the training session: ${toError(error).message}`,
+      };
+      this.notify();
+      return;
+    }
+    if (persisted === null) {
+      return;
+    }
+
+    this.highestSequence = persisted.highestSequence;
+    this.currentSnapshot = {
+      ...initialSnapshot,
+      state: persisted.state,
+      sessionId: persisted.sessionId,
+      notes: persisted.notes,
+      deviceKey: persisted.deviceKey,
+      deviceName: persisted.deviceName,
+      localId: persisted.localId,
+      startedAt: persisted.startedAt,
+      completedAt: persisted.completedAt,
+      targetCount: MVP_TARGET_COUNT,
+      count: persisted.count,
+      elapsedMs: persisted.elapsedMs,
+      result: persisted.result,
+      error: null,
+    };
+
+    if (persisted.state === 'completed' && persisted.result !== null) {
+      this.notify();
+      this.beginCompletedRecovery();
+      return;
+    }
+
+    this.update({ state: 'recovering', error: 'Restoring the device-owned session…' });
+    this.beginRecovery();
+  }
+
   async start(notes: string): Promise<void> {
     const normalizedNotes = normalizeNotes(notes);
     if (this.currentSnapshot.state === 'starting' || this.currentSnapshot.state === 'active') {
@@ -206,6 +259,7 @@ export class TrainingSessionController {
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
         await this.writeAndWaitForStartAck(packet, sessionId);
+        await this.persistenceChain;
         return;
       } catch (error) {
         if (!(error instanceof StartTimeoutError) || attempt === 1) {
@@ -226,6 +280,7 @@ export class TrainingSessionController {
         }
         if (state.payload.state === DEVICE_STATES.ACTIVE) {
           this.acceptActiveState(state);
+          await this.persistenceChain;
           return;
         }
         if (state.payload.state === DEVICE_STATES.COMPLETED) {
@@ -274,6 +329,39 @@ export class TrainingSessionController {
         this.recoveryAction = null;
       }
     });
+  }
+
+  private beginCompletedRecovery(): void {
+    if (this.completedRecoveryAction !== null || this.currentSnapshot.sessionId === null) {
+      return;
+    }
+    const action = Promise.resolve().then(() => this.reconnectCompletedResult());
+    this.completedRecoveryAction = action;
+    void action.finally(() => {
+      if (this.completedRecoveryAction === action) {
+        this.completedRecoveryAction = null;
+      }
+    });
+  }
+
+  private async reconnectCompletedResult(): Promise<void> {
+    const sessionId = this.currentSnapshot.sessionId;
+    if (sessionId === null) {
+      return;
+    }
+
+    try {
+      await this.options.connection.reconnectLastDevice();
+      if (
+        this.options.connection.snapshot.status !== 'ready' ||
+        this.options.connection.snapshot.connectedDevice === null
+      ) {
+        throw new Error('Unable to reconnect to the training device');
+      }
+      await this.options.connection.sync(sessionId);
+    } catch (error) {
+      this.update({ error: `Completed result recovery failed: ${toError(error).message}` });
+    }
   }
 
   private async recover(): Promise<void> {
@@ -573,9 +661,33 @@ export class TrainingSessionController {
 
   private update(patch: TrainingSnapshotPatch): void {
     this.currentSnapshot = { ...this.currentSnapshot, ...patch };
+    this.queuePersistence();
+    this.notify();
+  }
+
+  private notify(): void {
     for (const listener of this.listeners) {
       listener(this.currentSnapshot);
     }
+  }
+
+  private queuePersistence(): void {
+    const sessionStore = this.options.sessionStore;
+    if (sessionStore === undefined) {
+      return;
+    }
+    const snapshot = this.currentSnapshot;
+    const highestSequence = this.highestSequence;
+    this.persistenceChain = this.persistenceChain
+      .then(async () => {
+        const persisted = toPersistedSession(snapshot, highestSequence);
+        if (persisted === null) {
+          await sessionStore.clear();
+        } else {
+          await sessionStore.save(persisted);
+        }
+      })
+      .catch(() => undefined);
   }
 }
 
@@ -601,6 +713,42 @@ function normalizeNotes(notes: string): string {
 
 function isValidSessionId(sessionId: number): boolean {
   return Number.isInteger(sessionId) && sessionId > 0 && sessionId <= 0xffffffff;
+}
+
+function toPersistedSession(snapshot: TrainingSnapshot, highestSequence: number): PersistedTrainingSession | null {
+  if (
+    snapshot.state === 'idle' ||
+    snapshot.sessionId === null ||
+    snapshot.deviceKey === null ||
+    snapshot.localId === null
+  ) {
+    return null;
+  }
+
+  const state: PersistedTrainingSession['state'] =
+    snapshot.state === 'completed'
+      ? 'completed'
+      : snapshot.state === 'active'
+        ? 'active'
+        : snapshot.state === 'starting'
+          ? 'starting'
+          : 'recovering';
+
+  return {
+    state,
+    sessionId: snapshot.sessionId,
+    notes: snapshot.notes,
+    deviceKey: snapshot.deviceKey,
+    deviceName: snapshot.deviceName,
+    localId: snapshot.localId,
+    startedAt: snapshot.startedAt,
+    completedAt: snapshot.completedAt,
+    targetCount: snapshot.targetCount,
+    count: snapshot.count,
+    elapsedMs: snapshot.elapsedMs,
+    result: snapshot.result,
+    highestSequence,
+  };
 }
 
 function createSessionId(): number {

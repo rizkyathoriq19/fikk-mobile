@@ -12,6 +12,7 @@ import { FIKK_BLE_PROFILE } from '../../ble/fikk-profile';
 import type { BleAdapterState, BleDevice } from '../../ble/transport';
 import type { ConnectionSnapshot } from '../bluetooth/connection-controller';
 import type { TrainingSession, TrainingSessionRepository } from '../history/session-repository';
+import type { PersistedTrainingSession, TrainingSessionStore } from './session-store';
 import {
   TrainingSessionController,
   type TrainingConnection,
@@ -114,6 +115,24 @@ class MemoryTrainingSessionRepository implements TrainingSessionRepository {
 
   async get(id: string): Promise<TrainingSession | null> {
     return [...this.sessions.values()].find((session) => session.id === id) ?? null;
+  }
+}
+
+class MemoryTrainingSessionStore implements TrainingSessionStore {
+  session: PersistedTrainingSession | null = null;
+
+  async load(): Promise<PersistedTrainingSession | null> {
+    return this.session === null
+      ? null
+      : { ...this.session, result: this.session.result === null ? null : { ...this.session.result } };
+  }
+
+  async save(session: PersistedTrainingSession): Promise<void> {
+    this.session = { ...session, result: session.result === null ? null : { ...session.result } };
+  }
+
+  async clear(): Promise<void> {
+    this.session = null;
   }
 }
 
@@ -526,4 +545,125 @@ test('disconnect recovery reports when the device no longer retains the session'
 
   assert.match(controller.snapshot.error ?? '', /no longer retains|start a new session/i);
   assert.equal(controller.snapshot.sessionId, 99);
+});
+
+async function flushPersistence(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+test('relaunch restores an active session and synchronizes without sending START', async () => {
+  const store = new MemoryTrainingSessionStore();
+  const connection = new FakeTrainingConnection();
+  const original = new TrainingSessionController({
+    connection,
+    sessionStore: store,
+    sessionIdFactory: () => 123,
+    startAckTimeoutMs: 50,
+  });
+  const start = original.start('relaunch active');
+  await Promise.resolve();
+  connection.emit(acceptedStart(123));
+  await start;
+  connection.emit({
+    version: 1,
+    messageType: MESSAGE_TYPES.PROGRESS,
+    sessionId: 123,
+    sequence: 2,
+    payload: { count: 2, elapsedMs: 900 },
+  });
+  await flushPersistence();
+  original.dispose();
+
+  connection.recoveryCalls.length = 0;
+  connection.setConnectionSnapshot({ status: 'disconnected', connectedDevice: null, deviceState: null });
+  connection.onReconnect = () => {
+    connection.setConnectionSnapshot({ status: 'ready', connectedDevice: device });
+  };
+  connection.onSync = (sessionId) => {
+    connection.emit({
+      version: 1,
+      messageType: MESSAGE_TYPES.STATE,
+      sessionId,
+      sequence: 3,
+      payload: { state: DEVICE_STATES.ACTIVE, count: 3, elapsedMs: 1400 },
+    });
+  };
+
+  const restored = new TrainingSessionController({
+    connection,
+    sessionStore: store,
+    recoveryResponseTimeoutMs: 50,
+  });
+  await restored.restore();
+  await waitForTrainingState(restored, 'active');
+
+  assert.equal(restored.snapshot.sessionId, 123);
+  assert.equal(restored.snapshot.count, 3);
+  assert.equal(restored.snapshot.elapsedMs, 1400);
+  assert.deepEqual(connection.recoveryCalls, ['reconnect', 'sync:123']);
+  assert.equal(connection.writes.length, 1);
+});
+
+test('relaunch restores a completed result without creating a new session', async () => {
+  const store = new MemoryTrainingSessionStore();
+  const connection = new FakeTrainingConnection();
+  const original = new TrainingSessionController({
+    connection,
+    sessionStore: store,
+    sessionIdFactory: () => 456,
+    clock: (() => {
+      let timestamp = 0;
+      return () => `completed-${++timestamp}`;
+    })(),
+    startAckTimeoutMs: 50,
+  });
+  const start = original.start('relaunch completed');
+  await Promise.resolve();
+  connection.emit(acceptedStart(456));
+  await start;
+  connection.emit(complete(456, 2, 6, 2200));
+  await flushPersistence();
+  original.dispose();
+  connection.recoveryCalls.length = 0;
+
+  const restored = new TrainingSessionController({ connection, sessionStore: store });
+  await restored.restore();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.equal(restored.snapshot.state, 'completed');
+  assert.equal(restored.snapshot.sessionId, 456);
+  assert.equal(restored.snapshot.result?.durationMs, 2200);
+  assert.deepEqual(connection.recoveryCalls, ['reconnect', 'sync:456']);
+  assert.equal(connection.writes.length, 1);
+});
+
+test('relaunch recovery failure preserves the unresolved session without fabricating a result', async () => {
+  const store = new MemoryTrainingSessionStore();
+  const connection = new FakeTrainingConnection();
+  const original = new TrainingSessionController({
+    connection,
+    sessionStore: store,
+    sessionIdFactory: () => 789,
+    startAckTimeoutMs: 50,
+  });
+  const start = original.start('relaunch failure');
+  await Promise.resolve();
+  connection.emit(acceptedStart(789));
+  await start;
+  await flushPersistence();
+  original.dispose();
+  connection.setConnectionSnapshot({ status: 'disconnected', connectedDevice: null, deviceState: null });
+  connection.onReconnect = () => undefined;
+
+  const restored = new TrainingSessionController({
+    connection,
+    sessionStore: store,
+    recoveryResponseTimeoutMs: 50,
+  });
+  await restored.restore();
+  await waitForTrainingState(restored, 'error');
+
+  assert.equal(restored.snapshot.sessionId, 789);
+  assert.equal(restored.snapshot.result, null);
+  assert.match(restored.snapshot.error ?? '', /unable to reconnect|recovery failed/i);
 });

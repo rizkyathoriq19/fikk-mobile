@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useBluetooth } from '../bluetooth/BluetoothProvider';
 import { createNativeTrainingSessionRepository } from '../history/sqlite-session-repository';
 import type { TrainingSession } from '../history/session-repository';
+import { createNativeTrainingSessionStore } from './native-session-store';
 import {
   TrainingSessionController,
   type TrainingSnapshot,
@@ -22,19 +23,24 @@ const TrainingContext = createContext<TrainingContextValue | null>(null);
 export function TrainingProvider({ children }: PropsWithChildren) {
   const { connection } = useBluetooth();
   const repository = useMemo(() => createNativeTrainingSessionRepository(), []);
+  const sessionStore = useMemo(() => createNativeTrainingSessionStore(), []);
   const controller = useMemo(
-    () => new TrainingSessionController({ connection, repository }),
-    [connection, repository],
+    () => new TrainingSessionController({ connection, repository, sessionStore }),
+    [connection, repository, sessionStore],
   );
   const [snapshot, setSnapshot] = useState<TrainingSnapshot>(controller.snapshot);
 
   useEffect(() => {
     const unsubscribe = controller.subscribe(setSnapshot);
+    void (async () => {
+      await connection.loadLastDevice().catch(() => undefined);
+      await controller.restore();
+    })().catch(() => undefined);
     return () => {
       unsubscribe();
       controller.dispose();
     };
-  }, [controller]);
+  }, [connection, controller]);
 
   const value = useMemo(
     () => ({
