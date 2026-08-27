@@ -1,6 +1,8 @@
 import type { PropsWithChildren } from 'react';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useBluetooth } from '../bluetooth/BluetoothProvider';
+import { createNativeTrainingSessionRepository } from '../history/sqlite-session-repository';
+import type { TrainingSession } from '../history/session-repository';
 import {
   TrainingSessionController,
   type TrainingSnapshot,
@@ -9,13 +11,21 @@ import {
 type TrainingContextValue = {
   snapshot: TrainingSnapshot;
   start(notes: string): Promise<void>;
+  saveResult(): Promise<TrainingSession>;
+  discardResult(): Promise<void>;
+  listSessions(): Promise<TrainingSession[]>;
+  getSession(id: string): Promise<TrainingSession | null>;
 };
 
 const TrainingContext = createContext<TrainingContextValue | null>(null);
 
 export function TrainingProvider({ children }: PropsWithChildren) {
   const { connection } = useBluetooth();
-  const controller = useMemo(() => new TrainingSessionController({ connection }), [connection]);
+  const repository = useMemo(() => createNativeTrainingSessionRepository(), []);
+  const controller = useMemo(
+    () => new TrainingSessionController({ connection, repository }),
+    [connection, repository],
+  );
   const [snapshot, setSnapshot] = useState<TrainingSnapshot>(controller.snapshot);
 
   useEffect(() => {
@@ -30,6 +40,10 @@ export function TrainingProvider({ children }: PropsWithChildren) {
     () => ({
       snapshot,
       start: (notes: string) => controller.start(notes),
+      saveResult: () => controller.saveResult(),
+      discardResult: () => controller.discardResult(),
+      listSessions: () => controller.listSessions(),
+      getSession: (id: string) => controller.getSession(id),
     }),
     [controller, snapshot],
   );

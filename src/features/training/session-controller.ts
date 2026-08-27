@@ -6,6 +6,7 @@ import {
   type ProtocolMessage,
 } from '../../protocol/codec';
 import { ACK_STATUS, COMPLETION_REASONS } from '../../protocol/constants';
+import type { TrainingSession, TrainingSessionRepository } from '../history/session-repository';
 import type { ConnectionSnapshot } from '../bluetooth/connection-controller';
 
 export const MVP_TARGET_COUNT = 6 as const;
@@ -23,7 +24,9 @@ export type TrainingSnapshot = {
   state: TrainingState;
   sessionId: number | null;
   notes: string;
+  deviceKey: string | null;
   deviceName: string | null;
+  localId: string | null;
   startedAt: string | null;
   completedAt: string | null;
   targetCount: typeof MVP_TARGET_COUNT;
@@ -42,6 +45,7 @@ export interface TrainingConnection {
 
 type TrainingSessionControllerOptions = {
   connection: TrainingConnection;
+  repository?: TrainingSessionRepository;
   sessionIdFactory?: () => number;
   clock?: () => string;
   startAckTimeoutMs?: number;
@@ -69,7 +73,9 @@ const initialSnapshot: TrainingSnapshot = {
   state: 'idle',
   sessionId: null,
   notes: '',
+  deviceKey: null,
   deviceName: null,
+  localId: null,
   startedAt: null,
   completedAt: null,
   targetCount: MVP_TARGET_COUNT,
@@ -87,6 +93,7 @@ export class TrainingSessionController {
   private readonly startAckTimeoutMs: number;
   private readonly unsubscribeFromMessages: () => void;
   private pendingStart: PendingStart | null = null;
+  private resultAction: Promise<TrainingSession> | null = null;
   private highestSequence = 0;
 
   constructor(private readonly options: TrainingSessionControllerOptions) {
@@ -103,6 +110,35 @@ export class TrainingSessionController {
   subscribe(listener: TrainingSnapshotListener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  async saveResult(): Promise<TrainingSession> {
+    if (this.resultAction !== null) {
+      return this.resultAction;
+    }
+    const action = this.persistResult();
+    this.resultAction = action;
+    try {
+      return await action;
+    } finally {
+      if (this.resultAction === action) {
+        this.resultAction = null;
+      }
+    }
+  }
+
+  async discardResult(): Promise<void> {
+    const { session, resultSequence } = this.completedResult();
+    await this.sendResultAcknowledgement(session.bleSessionId, resultSequence);
+    this.resetToIdle();
+  }
+
+  listSessions(): Promise<TrainingSession[]> {
+    return this.requireRepository().list();
+  }
+
+  getSession(id: string): Promise<TrainingSession | null> {
+    return this.requireRepository().get(id);
   }
 
   async start(notes: string): Promise<void> {
@@ -128,7 +164,9 @@ export class TrainingSessionController {
       state: 'starting',
       sessionId,
       notes: normalizedNotes,
+      deviceKey: this.options.connection.snapshot.connectedDevice?.id ?? null,
       deviceName: this.options.connection.snapshot.connectedDevice?.name ?? null,
+      localId: createLocalId(),
       startedAt: null,
       completedAt: null,
       targetCount: MVP_TARGET_COUNT,
@@ -184,6 +222,70 @@ export class TrainingSessionController {
     this.clearPendingStart();
     this.unsubscribeFromMessages();
     this.listeners.clear();
+  }
+
+  private async persistResult(): Promise<TrainingSession> {
+    const { session, resultSequence } = this.completedResult();
+    await this.requireRepository().upsert(session);
+    await this.sendResultAcknowledgement(session.bleSessionId, resultSequence);
+    this.resetToIdle();
+    return session;
+  }
+
+  private completedResult(): { session: TrainingSession; resultSequence: number } {
+    const result = this.currentSnapshot.result;
+    if (
+      this.currentSnapshot.state !== 'completed' ||
+      this.currentSnapshot.sessionId === null ||
+      this.currentSnapshot.deviceKey === null ||
+      this.currentSnapshot.localId === null ||
+      this.currentSnapshot.startedAt === null ||
+      this.currentSnapshot.completedAt === null ||
+      result === null
+    ) {
+      throw new Error('a completed training result is required');
+    }
+
+    return {
+      session: {
+        id: this.currentSnapshot.localId,
+        bleSessionId: this.currentSnapshot.sessionId,
+        notes: this.currentSnapshot.notes || null,
+        targetCount: this.currentSnapshot.targetCount,
+        finalCount: result.count,
+        durationMs: result.durationMs,
+        startedAt: this.currentSnapshot.startedAt,
+        completedAt: this.currentSnapshot.completedAt,
+        deviceKey: this.currentSnapshot.deviceKey,
+        deviceName: this.currentSnapshot.deviceName,
+        status: 'completed',
+        protocolVersion: 1,
+      },
+      resultSequence: result.sequence,
+    };
+  }
+
+  private async sendResultAcknowledgement(sessionId: number, resultSequence: number): Promise<void> {
+    await this.options.connection.writeControl(
+      encodeMessage({
+        version: 1,
+        messageType: MESSAGE_TYPES.ACK_RESULT,
+        sessionId,
+        sequence: 0,
+        payload: { resultSequence },
+      }),
+    );
+  }
+
+  private requireRepository(): TrainingSessionRepository {
+    if (this.options.repository === undefined) {
+      throw new Error('a training session repository is required');
+    }
+    return this.options.repository;
+  }
+
+  private resetToIdle(): void {
+    this.update({ ...initialSnapshot });
   }
 
   private async writeAndWaitForStartAck(packet: Uint8Array, sessionId: number): Promise<void> {
@@ -362,6 +464,14 @@ function isValidSessionId(sessionId: number): boolean {
 function createSessionId(): number {
   const sessionId = Math.floor(Math.random() * 0x100000000);
   return sessionId === 0 ? 1 : sessionId;
+}
+
+function createLocalId(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => {
+    const random = Math.floor(Math.random() * 16);
+    const value = character === 'x' ? random : (random & 0x3) | 0x8;
+    return value.toString(16);
+  });
 }
 
 function toError(error: unknown): Error {

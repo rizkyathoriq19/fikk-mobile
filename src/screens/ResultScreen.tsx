@@ -1,13 +1,44 @@
+import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Button, StyleSheet, Text, View } from 'react-native';
-import { COMPLETION_REASONS } from '../protocol/constants';
+import { ResultField } from '../components/ResultField';
 import { Screen } from '../components/Screen';
 import { useTraining } from '../features/training/TrainingProvider';
+import { formatCompletionReason } from '../features/training/labels';
 
 export function ResultScreen() {
   const router = useRouter();
-  const { snapshot } = useTraining();
+  const { snapshot, saveResult, discardResult } = useTraining();
+  const [busy, setBusy] = useState(false);
+  const [action, setAction] = useState<'save' | 'discard' | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const result = snapshot.result;
+
+  const handleSave = () => {
+    setBusy(true);
+    setAction('save');
+    setActionError(null);
+    void saveResult()
+      .then(() => router.replace('/history'))
+      .catch((error: unknown) => {
+        setActionError(toError(error).message);
+        setBusy(false);
+        setAction(null);
+      });
+  };
+
+  const handleDiscard = () => {
+    setBusy(true);
+    setAction('discard');
+    setActionError(null);
+    void discardResult()
+      .then(() => router.replace('/'))
+      .catch((error: unknown) => {
+        setActionError(toError(error).message);
+        setBusy(false);
+        setAction(null);
+      });
+  };
 
   if (snapshot.state !== 'completed' || result === null) {
     return (
@@ -44,33 +75,19 @@ export function ResultScreen() {
       <ResultField label="Device" value={snapshot.deviceName ?? 'Unknown device'} />
       <ResultField label="Completion reason" value={formatCompletionReason(result.reason)} />
 
+      {actionError && <Text style={styles.error}>{actionError}</Text>}
       <View style={styles.button}>
-        <Button title="Back to Home" onPress={() => router.replace('/')} />
+        <Button disabled={busy} title={action === 'save' ? 'Saving…' : 'Save Result'} onPress={handleSave} />
+      </View>
+      <View style={styles.secondaryButton}>
+        <Button disabled={busy} title={action === 'discard' ? 'Discarding…' : 'Discard'} onPress={handleDiscard} />
       </View>
     </Screen>
   );
 }
 
-function ResultField({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
-      <Text style={styles.value}>{value}</Text>
-    </View>
-  );
-}
-
-function formatCompletionReason(reason: number): string {
-  switch (reason) {
-    case COMPLETION_REASONS.TARGET_REACHED:
-      return 'Target reached';
-    case COMPLETION_REASONS.STOPPED:
-      return 'Stopped';
-    case COMPLETION_REASONS.DEVICE_ERROR:
-      return 'Device error';
-    default:
-      return `Unknown (${reason})`;
-  }
+function toError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
 }
 
 const styles = StyleSheet.create({
@@ -79,9 +96,8 @@ const styles = StyleSheet.create({
   hero: { marginTop: 24, padding: 20, borderRadius: 12, backgroundColor: '#eff6ff' },
   heroValue: { fontSize: 40, fontWeight: '800', color: '#1d4ed8' },
   heroLabel: { marginTop: 4, color: '#1e3a8a' },
-  field: { marginTop: 18 },
-  label: { fontSize: 13, fontWeight: '600', color: '#64748b', textTransform: 'uppercase' },
-  value: { marginTop: 4, color: '#0f172a' },
   helper: { marginTop: 18, color: '#64748b' },
+  error: { marginTop: 18, padding: 12, color: '#b91c1c', backgroundColor: '#fee2e2', borderRadius: 8 },
   button: { marginTop: 28 },
+  secondaryButton: { marginTop: 12 },
 });

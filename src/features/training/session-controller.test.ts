@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  decodeMessage,
   DEVICE_STATES,
   MESSAGE_TYPES,
   type ProtocolMessage,
@@ -9,6 +10,7 @@ import {
 import { ACK_STATUS, COMPLETION_REASONS } from '../../protocol/constants';
 import { FIKK_BLE_PROFILE } from '../../ble/fikk-profile';
 import type { BleAdapterState, BleDevice } from '../../ble/transport';
+import type { TrainingSession, TrainingSessionRepository } from '../history/session-repository';
 import {
   TrainingSessionController,
   type TrainingConnection,
@@ -65,6 +67,26 @@ class FakeTrainingConnection implements TrainingConnection {
 
   setState(message: ProtocolMessage): void {
     this.stateBytes = encodeMessage(message);
+  }
+}
+
+class MemoryTrainingSessionRepository implements TrainingSessionRepository {
+  readonly sessions = new Map<string, TrainingSession>();
+  saveCalls = 0;
+  onSave: (() => void) | null = null;
+
+  async upsert(session: TrainingSession): Promise<void> {
+    this.saveCalls += 1;
+    this.onSave?.();
+    this.sessions.set(`${session.deviceKey}:${session.bleSessionId}`, { ...session });
+  }
+
+  async list(): Promise<TrainingSession[]> {
+    return [...this.sessions.values()].sort((left, right) => right.completedAt.localeCompare(left.completedAt));
+  }
+
+  async get(id: string): Promise<TrainingSession | null> {
+    return [...this.sessions.values()].find((session) => session.id === id) ?? null;
   }
 }
 
@@ -284,4 +306,79 @@ test('complete uses authoritative values and ignores stale or regressing progres
 
   connection.emit(complete(55, 4, 1, 100));
   assert.equal(controller.snapshot.result?.count, 6);
+});
+
+async function makeCompletedSession(
+  repository: TrainingSessionRepository,
+  sessionId = 42,
+): Promise<{ connection: FakeTrainingConnection; controller: TrainingSessionController }> {
+  const connection = new FakeTrainingConnection();
+  let timestamp = 0;
+  const controller = new TrainingSessionController({
+    connection,
+    repository,
+    sessionIdFactory: () => sessionId,
+    clock: () => `timestamp-${++timestamp}`,
+    startAckTimeoutMs: 50,
+  });
+  const start = controller.start('  saved notes  ');
+  await Promise.resolve();
+  connection.emit(acceptedStart(sessionId));
+  await start;
+  connection.emit(complete(sessionId, 2, 6, 1600));
+  assert.equal(controller.snapshot.state, 'completed');
+  return { connection, controller };
+}
+
+test('Save persists one result before sending ACK_RESULT, including repeated Save calls', async () => {
+  const repository = new MemoryTrainingSessionRepository();
+  const { connection, controller } = await makeCompletedSession(repository);
+  const operations: string[] = [];
+  repository.onSave = () => operations.push('persist');
+  connection.onWrite = () => operations.push('write');
+
+  const firstSave = controller.saveResult();
+  const secondSave = controller.saveResult();
+  const [saved] = await Promise.all([firstSave, secondSave]);
+
+  assert.equal(repository.saveCalls, 1);
+  assert.deepEqual(operations, ['persist', 'write']);
+  assert.equal(saved.bleSessionId, 42);
+  assert.equal(saved.notes, 'saved notes');
+  assert.equal(saved.targetCount, 6);
+  assert.equal(saved.finalCount, 6);
+  assert.equal(saved.durationMs, 1600);
+  assert.equal(saved.startedAt, 'timestamp-1');
+  assert.equal(saved.completedAt, 'timestamp-2');
+  assert.equal(saved.deviceKey, 'device-1');
+  assert.equal(saved.deviceName, 'Fikk-ESP32');
+  assert.equal(saved.status, 'completed');
+  assert.equal(saved.protocolVersion, 1);
+  assert.deepEqual(decodeMessage(connection.writes[1]), {
+    version: 1,
+    messageType: MESSAGE_TYPES.ACK_RESULT,
+    sessionId: 42,
+    sequence: 0,
+    payload: { resultSequence: 2 },
+  });
+  assert.equal(controller.snapshot.state, 'idle');
+});
+
+test('Discard sends ACK_RESULT without persisting the completed result', async () => {
+  const repository = new MemoryTrainingSessionRepository();
+  const { connection, controller } = await makeCompletedSession(repository, 43);
+
+  await controller.discardResult();
+
+  assert.equal(repository.saveCalls, 0);
+  assert.equal(repository.sessions.size, 0);
+  assert.deepEqual(decodeMessage(connection.writes[1]), {
+    version: 1,
+    messageType: MESSAGE_TYPES.ACK_RESULT,
+    sessionId: 43,
+    sequence: 0,
+    payload: { resultSequence: 2 },
+  });
+  assert.equal(controller.snapshot.state, 'idle');
+  assert.equal(controller.snapshot.sessionId, null);
 });
