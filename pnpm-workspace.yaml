@@ -24,3 +24,4 @@ minimumReleaseAgeExclude:
   - expo-linking@57.0.8
   - expo-router@57.0.17
   - expo-sqlite@57.0.2
+  - expo-system-ui@57.0.3

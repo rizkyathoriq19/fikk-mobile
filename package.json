@@ -6,6 +6,11 @@
   "scripts": {
     "test": "tsx --test \"src/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
+    "start": "expo start --dev-client",
+    "android": "expo start --dev-client --android",
+    "android:prebuild": "expo prebuild --platform android",
+    "android:build": "pnpm run android:prebuild && cd android && gradlew.bat assembleDebug",
+    "android:install": "pnpm run android:prebuild && cd android && gradlew.bat installDebug",
     "expo:config": "expo config --type public"
   },
   "dependencies": {
@@ -16,10 +21,13 @@
     "expo-linking": "~57.0.8",
     "expo-router": "~57.0.17",
     "expo-sqlite": "~57.0.2",
+    "expo-system-ui": "~57.0.3",
     "react": "19.2.3",
     "react-native": "0.86.3",
     "react-native-ble-manager": "12.5.1",
-    "react-native-safe-area-context": "~5.7.0"
+    "react-native-reanimated": "4.5.1",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-worklets": "0.10.1"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
