@@ -9,3 +9,6 @@ web-build/
 *.key
 *.mobileprovision
 android/
+graphify-out/cache/
+graphify-out/20??-??-??/
+graphify-out/.graphify_python
