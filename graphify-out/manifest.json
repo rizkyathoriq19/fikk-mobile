@@ -1,0 +1,367 @@
+{
+  "app.json": {
+    "mtime": 1787832472.3928783,
+    "ast_hash": "552637d40a2cdf167eff39e955bc0045",
+    "semantic_hash": ""
+  },
+  "babel.config.js": {
+    "mtime": 1787803219.860953,
+    "ast_hash": "089fd4a2f759bc83f8ae33c2d2c2c0ba",
+    "semantic_hash": ""
+  },
+  "firmware/include/BleProfile.h": {
+    "mtime": 1787813145.3366241,
+    "ast_hash": "a1d7cd3ec313768edd1de6ab5fe410be",
+    "semantic_hash": ""
+  },
+  "firmware/include/DeviceState.h": {
+    "mtime": 1787813145.4714386,
+    "ast_hash": "5aeb5e9f26e86c734f1b7a4ef22d4821",
+    "semantic_hash": ""
+  },
+  "firmware/include/InputDebouncer.h": {
+    "mtime": 1787827427.4120336,
+    "ast_hash": "eaa732a7a6eff66d65e65464a4d1252e",
+    "semantic_hash": ""
+  },
+  "firmware/include/Protocol.h": {
+    "mtime": 1787813649.2209136,
+    "ast_hash": "a77c9333d40d6fb273ebd1f35adee686",
+    "semantic_hash": ""
+  },
+  "firmware/src/main.cpp": {
+    "mtime": 1787827427.4130332,
+    "ast_hash": "be67b1b4d2827487ec3a7711ccd7af16",
+    "semantic_hash": ""
+  },
+  "firmware/test/test_input_debouncer/test_main.cpp": {
+    "mtime": 1787827427.414033,
+    "ast_hash": "2b6d14e5797fa7c757bea0b427a8e182",
+    "semantic_hash": ""
+  },
+  "firmware/test/test_protocol/test_main.cpp": {
+    "mtime": 1787813579.4974363,
+    "ast_hash": "40c9cb25b46462bf93f419631339efb0",
+    "semantic_hash": ""
+  },
+  "package.json": {
+    "mtime": 1787843658.8223789,
+    "ast_hash": "f93ae5211ccdbf5ecb0bda3758324797",
+    "semantic_hash": ""
+  },
+  "scripts/validate-esp32-ble.sh": {
+    "mtime": 1787815716.2453156,
+    "ast_hash": "db7f805d2634ac5545a6a64579958b1f",
+    "semantic_hash": ""
+  },
+  "src/app/(tabs)/_layout.tsx": {
+    "mtime": 1787818892.5032144,
+    "ast_hash": "5a0782df75e3a4702bfa8c32c5ad6b3a",
+    "semantic_hash": ""
+  },
+  "src/app/(tabs)/history.tsx": {
+    "mtime": 1787818892.277791,
+    "ast_hash": "fbf1199d51a0f326bfc492537e71d899",
+    "semantic_hash": ""
+  },
+  "src/app/(tabs)/index.tsx": {
+    "mtime": 1787818892.4671578,
+    "ast_hash": "afa373e97fdb2beb9c8f8a0351084333",
+    "semantic_hash": ""
+  },
+  "src/app/(tabs)/settings.tsx": {
+    "mtime": 1787818892.5138361,
+    "ast_hash": "74701791f2fa4aef6ab000963f3046d9",
+    "semantic_hash": ""
+  },
+  "src/app/_layout.tsx": {
+    "mtime": 1787825888.323218,
+    "ast_hash": "9bd71137a67b89e0f267efd3bb5496eb",
+    "semantic_hash": ""
+  },
+  "src/app/history/[id].tsx": {
+    "mtime": 1787832472.4014132,
+    "ast_hash": "bfa93650003f2d430da1eeed83bc4c0c",
+    "semantic_hash": ""
+  },
+  "src/app/result.tsx": {
+    "mtime": 1787827427.4150333,
+    "ast_hash": "3bf434256b9c6b9a1de147915922673e",
+    "semantic_hash": ""
+  },
+  "src/ble/create-native-transport.ts": {
+    "mtime": 1787816985.763575,
+    "ast_hash": "4dca2ee2f56d295f30ff5c1a5c29d67f",
+    "semantic_hash": ""
+  },
+  "src/ble/fikk-profile.test.ts": {
+    "mtime": 1787816985.6932847,
+    "ast_hash": "67e80d818778781b84faadce51ca7275",
+    "semantic_hash": ""
+  },
+  "src/ble/fikk-profile.ts": {
+    "mtime": 1787816985.7564497,
+    "ast_hash": "bdbc24ebbf4ecf9dc2e938af271a15ce",
+    "semantic_hash": ""
+  },
+  "src/ble/profile.test.ts": {
+    "mtime": 1787816985.7215626,
+    "ast_hash": "348c07c8dfae30773a1ff4bb26910051",
+    "semantic_hash": ""
+  },
+  "src/ble/profile.ts": {
+    "mtime": 1787804063.431998,
+    "ast_hash": "3066a55b4d905223db64e783654d514d",
+    "semantic_hash": ""
+  },
+  "src/ble/react-native-ble-manager.test.ts": {
+    "mtime": 1787834075.228145,
+    "ast_hash": "5a43af29ea7514c8b48f60d10c91c323",
+    "semantic_hash": ""
+  },
+  "src/ble/react-native-ble-manager.ts": {
+    "mtime": 1787834075.2301538,
+    "ast_hash": "fb7dfe2503148f512404f4200722a3f6",
+    "semantic_hash": ""
+  },
+  "src/ble/transport.test.ts": {
+    "mtime": 1787816985.7388327,
+    "ast_hash": "700806260bceb26d9e7673ecb9e54db8",
+    "semantic_hash": ""
+  },
+  "src/ble/transport.ts": {
+    "mtime": 1787834075.2301538,
+    "ast_hash": "aa6d784857492c997d65b33eead4cea2",
+    "semantic_hash": ""
+  },
+  "src/components/ResultField.tsx": {
+    "mtime": 1787832472.4014132,
+    "ast_hash": "5a3f05a2614f229df261b3ad5eada930",
+    "semantic_hash": ""
+  },
+  "src/components/Screen.tsx": {
+    "mtime": 1787818845.6282322,
+    "ast_hash": "219aabffb8e3114948231993501a1283",
+    "semantic_hash": ""
+  },
+  "src/features/bluetooth/BluetoothProvider.tsx": {
+    "mtime": 1787834075.231427,
+    "ast_hash": "dde5205bd109e27e4f248da35c86982d",
+    "semantic_hash": ""
+  },
+  "src/features/bluetooth/connection-controller.test.ts": {
+    "mtime": 1787836384.2963004,
+    "ast_hash": "9ae258e8b3735ff4e8c42b6a93a80cf8",
+    "semantic_hash": ""
+  },
+  "src/features/bluetooth/connection-controller.ts": {
+    "mtime": 1787836384.2973697,
+    "ast_hash": "0a4f65b90cb3a433c5ea38f663146dd5",
+    "semantic_hash": ""
+  },
+  "src/features/bluetooth/labels.ts": {
+    "mtime": 1787818047.0404463,
+    "ast_hash": "d044dd1a2520458965886a214408a5d4",
+    "semantic_hash": ""
+  },
+  "src/features/bluetooth/native-device-store.ts": {
+    "mtime": 1787816988.3472705,
+    "ast_hash": "85c4ee3389e6c6d4e78fd4daee0b270f",
+    "semantic_hash": ""
+  },
+  "src/features/bluetooth/native-permissions.ts": {
+    "mtime": 1787816988.1965635,
+    "ast_hash": "c169c56f04ef04bee1527a7df87510ca",
+    "semantic_hash": ""
+  },
+  "src/features/history/session-repository.ts": {
+    "mtime": 1787832472.403545,
+    "ast_hash": "bd8559da240801ecced4b55562af610b",
+    "semantic_hash": ""
+  },
+  "src/features/history/sqlite-session-repository.ts": {
+    "mtime": 1787832472.403545,
+    "ast_hash": "4991af8ef3529c08d2527597651f6553",
+    "semantic_hash": ""
+  },
+  "src/features/training/TrainingProvider.tsx": {
+    "mtime": 1787835264.8717203,
+    "ast_hash": "22ed55f94f1bbbad4468d065bff4e3e7",
+    "semantic_hash": ""
+  },
+  "src/features/training/labels.ts": {
+    "mtime": 1787832472.4061131,
+    "ast_hash": "deca32a12df82f49551038221c637cf3",
+    "semantic_hash": ""
+  },
+  "src/features/training/native-session-store.ts": {
+    "mtime": 1787835264.8717203,
+    "ast_hash": "26de7d70b75cbb9ae47293273f5e33ab",
+    "semantic_hash": ""
+  },
+  "src/features/training/session-controller.test.ts": {
+    "mtime": 1787836384.299384,
+    "ast_hash": "b3ebbc15e014d519f0db3f004679c33d",
+    "semantic_hash": ""
+  },
+  "src/features/training/session-controller.ts": {
+    "mtime": 1787836384.300942,
+    "ast_hash": "56eed86b7ba2b276bb7495e4be9095b7",
+    "semantic_hash": ""
+  },
+  "src/features/training/session-store.ts": {
+    "mtime": 1787835264.8717203,
+    "ast_hash": "e930b8ff3692a23c26297e4525225ca7",
+    "semantic_hash": ""
+  },
+  "src/protocol/codec.test.ts": {
+    "mtime": 1787816988.5290365,
+    "ast_hash": "73076b5b0d15cbbab1bcd22a3a642988",
+    "semantic_hash": ""
+  },
+  "src/protocol/codec.ts": {
+    "mtime": 1787805377.9750493,
+    "ast_hash": "6df1ced2a7ca085a1860d7b936852b28",
+    "semantic_hash": ""
+  },
+  "src/protocol/constants.test.ts": {
+    "mtime": 1787816988.49708,
+    "ast_hash": "4cae985e7bb8522dcae799111d6a4b5f",
+    "semantic_hash": ""
+  },
+  "src/protocol/constants.ts": {
+    "mtime": 1787813810.2061706,
+    "ast_hash": "bbc49dad442819cb3cf40700cb528951",
+    "semantic_hash": ""
+  },
+  "src/screens/HistoryDetailScreen.tsx": {
+    "mtime": 1787836384.3016124,
+    "ast_hash": "4aeed63a604beba67466f537360f1a4d",
+    "semantic_hash": ""
+  },
+  "src/screens/HistoryScreen.tsx": {
+    "mtime": 1787836384.3036487,
+    "ast_hash": "22d5e530655082325cfc2f36d872f5f7",
+    "semantic_hash": ""
+  },
+  "src/screens/HomeScreen.tsx": {
+    "mtime": 1787836384.3041549,
+    "ast_hash": "a27a037f33d5ad7fc2365b1a6011d9f2",
+    "semantic_hash": ""
+  },
+  "src/screens/ResultScreen.tsx": {
+    "mtime": 1787836384.3041549,
+    "ast_hash": "cf71d046da97a731701f30b3fa73064f",
+    "semantic_hash": ""
+  },
+  "src/screens/SettingsScreen.tsx": {
+    "mtime": 1787836384.306214,
+    "ast_hash": "66e82bab6667a4e3f7f41578364ca8f4",
+    "semantic_hash": ""
+  },
+  "tsconfig.json": {
+    "mtime": 1787803238.44949,
+    "ast_hash": "2ad754f3450ab72e3788278d88830245",
+    "semantic_hash": ""
+  },
+  ".scratch/ble-training-app/issues/01-validate-physical-ble-foundation.md": {
+    "mtime": 1787802408.614098,
+    "ast_hash": "2244f27991d896a30b3937d970c3ad9f",
+    "semantic_hash": ""
+  },
+  ".scratch/ble-training-app/issues/02-connect-compatible-device-ready.md": {
+    "mtime": 1787802408.725794,
+    "ast_hash": "eb56e6fd9bc8f2fcdf0d0d1961af1721",
+    "semantic_hash": ""
+  },
+  ".scratch/ble-training-app/issues/03-start-six-ball-session.md": {
+    "mtime": 1787802408.6266148,
+    "ast_hash": "829509e19ca11dbd4d644140175d485e",
+    "semantic_hash": ""
+  },
+  ".scratch/ble-training-app/issues/04-complete-six-ball-result.md": {
+    "mtime": 1787802408.725794,
+    "ast_hash": "065834ad5f83d98d04ed9ceaab45b189",
+    "semantic_hash": ""
+  },
+  ".scratch/ble-training-app/issues/05-save-discard-history.md": {
+    "mtime": 1787802408.6256142,
+    "ast_hash": "937226ec41d8c6cf55ee5814a3f7c1b5",
+    "semantic_hash": ""
+  },
+  ".scratch/ble-training-app/issues/06-recover-after-disconnect.md": {
+    "mtime": 1787802408.892966,
+    "ast_hash": "f3ea7ff7270bdea5e8f7c1e99f4f62d5",
+    "semantic_hash": ""
+  },
+  ".scratch/ble-training-app/issues/07-restore-after-app-interruption.md": {
+    "mtime": 1787802408.8984811,
+    "ast_hash": "87013fd17125f029a9f573c9d5c31e03",
+    "semantic_hash": ""
+  },
+  ".scratch/ble-training-app/issues/08-harden-failures-accessibility.md": {
+    "mtime": 1787802408.8554263,
+    "ast_hash": "5fe6df51d55a180247f740ce8f5ab936",
+    "semantic_hash": ""
+  },
+  ".scratch/ble-training-app/issues/09-physical-matrix-release.md": {
+    "mtime": 1787802409.8942125,
+    "ast_hash": "1495d1532df79ecdac3410e43d269d20",
+    "semantic_hash": ""
+  },
+  ".scratch/ble-training-app/spec.md": {
+    "mtime": 1787801450.6437635,
+    "ast_hash": "38247ac452e6fb7d56756ddfc71462d5",
+    "semantic_hash": ""
+  },
+  "AGENTS.md": {
+    "mtime": 1788165486.897315,
+    "ast_hash": "af05a39246408eaea7e53e99932e566d",
+    "semantic_hash": ""
+  },
+  "PRD.md": {
+    "mtime": 1787798479.2645676,
+    "ast_hash": "dd2a8ab4b6ae1ea5e5ad792441bfe1ad",
+    "semantic_hash": ""
+  },
+  "docs/agents/domain.md": {
+    "mtime": 1787800804.5987914,
+    "ast_hash": "35089ed6a70a657c91fd100ade31b642",
+    "semantic_hash": ""
+  },
+  "docs/agents/issue-tracker.md": {
+    "mtime": 1787802766.0046248,
+    "ast_hash": "dc92fcade376014d3d737cf7658f8c90",
+    "semantic_hash": ""
+  },
+  "docs/agents/triage-labels.md": {
+    "mtime": 1787800804.5987914,
+    "ast_hash": "22add54cb98451c55b20e6b7992d4a85",
+    "semantic_hash": ""
+  },
+  "firmware/README.md": {
+    "mtime": 1787827427.4110248,
+    "ast_hash": "c30b0ce4a0d6f67ff5940b529ef47f3e",
+    "semantic_hash": ""
+  },
+  "pnpm-workspace.yaml": {
+    "mtime": 1787843658.8223789,
+    "ast_hash": "88d850c8c8aa76e5ac817e04ec68769e",
+    "semantic_hash": ""
+  },
+  "spikes/001-ble-foundation/README.md": {
+    "mtime": 1787804484.842063,
+    "ast_hash": "3dffe5d612e56edc33bf399cb47a05b1",
+    "semantic_hash": ""
+  },
+  "to-questionnaire-esp-ble.md": {
+    "mtime": 1787814429.4769366,
+    "ast_hash": "e6f43d8256bbcef2898b61014b8eb138",
+    "semantic_hash": ""
+  },
+  ".codex/hooks.json": {
+    "mtime": 1788165486.907474,
+    "ast_hash": "5ebef3dd159986e465ab65e4014107ec",
+    "semantic_hash": ""
+  }
+}
