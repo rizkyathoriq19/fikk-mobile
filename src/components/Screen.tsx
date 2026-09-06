@@ -1,6 +1,8 @@
 import type { PropsWithChildren } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors } from './ui';
 
 type ScreenProps = PropsWithChildren<{
   contentContainerStyle?: StyleProp<ViewStyle>;
@@ -12,11 +14,15 @@ export function Screen({ children, contentContainerStyle, scroll = true }: Scree
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {scroll ? (
-        <ScrollView contentContainerStyle={contentStyle}>{children}</ScrollView>
-      ) : (
-        <View style={contentStyle}>{children}</View>
-      )}
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardAvoidingView}>
+        {scroll ? (
+          <ScrollView contentContainerStyle={contentStyle} keyboardShouldPersistTaps="handled">
+            {children}
+          </ScrollView>
+        ) : (
+          <View style={contentStyle}>{children}</View>
+        )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -24,10 +30,15 @@ export function Screen({ children, contentContainerStyle, scroll = true }: Scree
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.background,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
   },
   content: {
     flexGrow: 1,
+    gap: 18,
     padding: 20,
+    paddingBottom: 32,
   },
 });

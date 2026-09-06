@@ -35,6 +35,8 @@ export interface BluetoothPermissionGateway {
 export interface DeviceIdentityStore {
   load(): Promise<string | null>;
   save(deviceId: string): Promise<void>;
+  loadDevice?(): Promise<BleDevice | null>;
+  saveDevice?(device: BleDevice): Promise<void>;
 }
 
 export type ProtocolMessageListener = (message: ProtocolMessage) => void;
@@ -166,6 +168,10 @@ export class BluetoothConnectionController {
       const deviceState = this.decodeState(stateBytes);
       const deviceInfo = decodeText(deviceInfoBytes);
       await this.options.deviceStore.save(device.id);
+      const saveDevice = this.options.deviceStore.saveDevice;
+      if (saveDevice !== undefined) {
+        await saveDevice(device).catch(() => undefined);
+      }
       this.lastKnownDevice = device;
       this.notificationUnsubscribers = unsubscribers;
       this.update({
@@ -202,7 +208,10 @@ export class BluetoothConnectionController {
   }
 
   async reconnectLastDevice(): Promise<void> {
-    const device = this.lastKnownDevice ?? this.currentSnapshot.devices.find((item) => item.id === this.currentSnapshot.lastDeviceId);
+    let device = this.lastKnownDevice ?? this.currentSnapshot.devices.find((item) => item.id === this.currentSnapshot.lastDeviceId);
+    if (device === undefined && this.options.deviceStore.loadDevice !== undefined) {
+      device = (await this.options.deviceStore.loadDevice().catch(() => null)) ?? undefined;
+    }
     if (device === undefined) {
       this.fail(new Error('No last BLE device is available for recovery'));
       return;

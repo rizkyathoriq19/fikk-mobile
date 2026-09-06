@@ -229,3 +229,47 @@ test('unexpected disconnect preserves identity, reconnects, and syncs the same s
     payload: {},
   });
 });
+
+test('last device reconnects after the controller is recreated', async () => {
+  const device: BleDevice = {
+    id: 'device-1',
+    name: 'Fikk-ESP32',
+    rssi: -44,
+    serviceUuids: [FIKK_BLE_PROFILE.serviceUuid],
+  };
+  const state = encodeMessage({
+    version: 1,
+    messageType: MESSAGE_TYPES.STATE,
+    sessionId: 0,
+    sequence: 1,
+    payload: { state: 0, count: 0, elapsedMs: 0 },
+  });
+  let storedDevice: BleDevice | null = null;
+  const deviceStore: DeviceIdentityStore = {
+    load: async () => storedDevice?.id ?? null,
+    save: async () => undefined,
+    loadDevice: async () => storedDevice,
+    saveDevice: async (nextDevice) => {
+      storedDevice = nextDevice;
+    },
+  };
+  const createController = () =>
+    new BluetoothConnectionController({
+      transport: new FakeBleTransport({ readValues: { STATE: state } }),
+      permissions: { request: async () => undefined },
+      deviceStore,
+      profile: FIKK_BLE_PROFILE,
+    });
+
+  const firstController = createController();
+  await firstController.connect(device);
+  firstController.dispose();
+
+  const recreatedController = createController();
+  await recreatedController.loadLastDevice();
+  await recreatedController.reconnectLastDevice();
+
+  assert.equal(recreatedController.snapshot.lastDeviceId, device.id);
+  assert.equal(recreatedController.snapshot.connectedDevice?.name, device.name);
+  assert.equal(recreatedController.snapshot.status, 'ready');
+});

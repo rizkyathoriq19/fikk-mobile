@@ -1,111 +1,148 @@
-import { ActivityIndicator, Button, StyleSheet, Text, View } from 'react-native';
+import { useEffect } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '../components/Screen';
+import { ActionButton, Card, ScreenTitle, StatusPill, colors } from '../components/ui';
 import { useBluetooth } from '../features/bluetooth/BluetoothProvider';
-import { formatConnectionStatus, formatDeviceState } from '../features/bluetooth/labels';
+import { formatConnectionStatus } from '../features/bluetooth/labels';
 
 export function SettingsScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams<{ returnTo?: string }>();
   const { snapshot, scan, connect, reconnectLastDevice, disconnect } = useBluetooth();
   const busy = ['requesting-permission', 'scanning', 'connecting', 'discovering'].includes(snapshot.status);
   const connected = snapshot.connectedDevice !== null;
 
+  useEffect(() => {
+    if (params.returnTo === 'training' && snapshot.status === 'ready') {
+      router.replace('/');
+    }
+  }, [params.returnTo, router, snapshot.status]);
+
   return (
     <Screen>
-      <Text accessibilityRole="header" style={styles.title}>
-        Settings
-      </Text>
-      <Text style={styles.sectionTitle}>Bluetooth</Text>
-      <Text style={styles.label}>Adapter</Text>
-      <Text accessibilityLiveRegion="polite" style={styles.value}>
-        {snapshot.adapterState}
-      </Text>
-      <Text style={styles.label}>Connection</Text>
-      <Text accessibilityLiveRegion="polite" style={styles.value}>
-        {formatConnectionStatus(snapshot)}
-      </Text>
-      {snapshot.lastDeviceId && (
-        <>
-          <Text style={styles.label}>Last device</Text>
-          <Text selectable style={styles.value}>
-            {snapshot.lastDeviceId}
-          </Text>
-        </>
-      )}
+      <ScreenTitle eyebrow="Device setup" title="Settings" subtitle="Connect your Fikk device before starting a session." />
+
+      <Card style={styles.statusCard}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardLabel}>Bluetooth</Text>
+          <StatusPill label={statusLabel(snapshot)} tone={statusTone(snapshot)} />
+        </View>
+        <Text accessibilityLiveRegion="polite" style={styles.statusValue}>{formatConnectionStatus(snapshot)}</Text>
+        <Text style={styles.helper}>{statusDescription(snapshot)}</Text>
+      </Card>
+
       {snapshot.error && (
         <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.error}>
-          {snapshot.error}
+          {friendlyError(snapshot.error)}
         </Text>
       )}
-      <View style={styles.buttonRow}>
-        <Button
+      <View style={styles.actionGroup}>
+        <ActionButton
           accessibilityLabel="Scan for compatible devices"
-          accessibilityState={{ busy, disabled: busy }}
           disabled={busy}
-          title={busy ? 'Working…' : 'Scan for devices'}
+          loading={snapshot.status === 'scanning' || snapshot.status === 'requesting-permission'}
+          title="Scan for devices"
           onPress={() => void scan()}
         />
         {snapshot.lastDeviceId && !connected && (
-          <Button
+          <ActionButton
             accessibilityLabel="Reconnect last device"
-            accessibilityState={{ busy, disabled: busy }}
             disabled={busy}
             title="Reconnect last device"
+            variant="outline"
             onPress={() => void reconnectLastDevice()}
           />
         )}
         {connected && (
-          <Button
+          <ActionButton
             accessibilityLabel="Disconnect current device"
             title="Disconnect"
+            variant="outline"
             onPress={() => void disconnect()}
           />
         )}
       </View>
-      {busy && <ActivityIndicator accessibilityLabel="Bluetooth operation in progress" style={styles.loader} />}
+      {busy && <ActivityIndicator accessibilityLabel="Bluetooth operation in progress" color={colors.primary} style={styles.loader} />}
 
-      {snapshot.devices.map((device) => (
-        <View key={device.id} style={styles.deviceCard}>
-          <View style={styles.deviceDetails}>
-            <Text style={styles.deviceName}>{device.name ?? 'Unnamed device'}</Text>
-            <Text selectable style={styles.deviceMeta}>
-              {device.id}
-            </Text>
-            <Text style={styles.deviceMeta}>RSSI: {device.rssi ?? 'unknown'}</Text>
-          </View>
-          <Button
-            accessibilityLabel={`${snapshot.connectedDevice?.id === device.id ? 'Connected to' : 'Connect to'} ${device.name ?? 'unnamed device'}`}
-            accessibilityState={{ disabled: busy || snapshot.connectedDevice?.id === device.id }}
-            disabled={busy || snapshot.connectedDevice?.id === device.id}
-            title={snapshot.connectedDevice?.id === device.id ? 'Connected' : 'Connect'}
-            onPress={() => void connect(device)}
-          />
+      {snapshot.devices.length > 0 && (
+        <View style={styles.deviceList}>
+          <Text style={styles.sectionTitle}>Nearby devices</Text>
+          {snapshot.devices.map((device) => (
+            <Card key={device.id} style={styles.deviceCard}>
+              <View style={styles.deviceDetails}>
+                <Text style={styles.deviceName}>{device.name ?? 'Unnamed Fikk device'}</Text>
+                <Text style={styles.deviceMeta}>Signal strength: {device.rssi ?? 'unknown'}</Text>
+              </View>
+              <ActionButton
+                accessibilityLabel={`${snapshot.connectedDevice?.id === device.id ? 'Connected to' : 'Connect to'} ${device.name ?? 'unnamed device'}`}
+                disabled={busy || snapshot.connectedDevice?.id === device.id}
+                title={snapshot.connectedDevice?.id === device.id ? 'Connected' : 'Connect'}
+                style={styles.deviceButton}
+                onPress={() => void connect(device)}
+              />
+            </Card>
+          ))}
         </View>
-      ))}
+      )}
 
       {snapshot.status === 'ready' && (
-        <View style={styles.diagnostics}>
-          <Text style={styles.label}>DEVICE_INFO</Text>
-          <Text selectable style={styles.value}>
-            {snapshot.deviceInfo ?? 'No device information'}
-          </Text>
-          <Text style={styles.label}>STATE</Text>
-          <Text style={styles.value}>{formatDeviceState(snapshot.deviceState)}</Text>
-        </View>
+        <Card style={styles.connectedCard}>
+          <Text style={styles.cardLabel}>Ready device</Text>
+          <Text style={styles.deviceName}>{snapshot.connectedDevice?.name ?? 'Fikk device'}</Text>
+          <Text style={styles.helper}>Ready for a new training session.</Text>
+        </Card>
       )}
     </Screen>
   );
 }
 
+function statusLabel(snapshot: ReturnType<typeof useBluetooth>['snapshot']): string {
+  if (snapshot.status === 'ready') return 'Ready';
+  if (snapshot.status === 'scanning') return 'Searching';
+  if (snapshot.status === 'connecting' || snapshot.status === 'discovering') return 'Working';
+  return 'Needs setup';
+}
+
+function statusTone(snapshot: ReturnType<typeof useBluetooth>['snapshot']): 'success' | 'warning' | 'danger' | 'neutral' {
+  if (snapshot.status === 'ready') return 'success';
+  if (snapshot.status === 'error') return 'danger';
+  if (snapshot.status === 'disconnected') return 'warning';
+  return 'neutral';
+}
+
+function statusDescription(snapshot: ReturnType<typeof useBluetooth>['snapshot']): string {
+  if (snapshot.adapterState === 'off') return 'Turn on Bluetooth in Android Settings, then scan again.';
+  if (snapshot.adapterState === 'unsupported') return 'This device does not support Bluetooth Low Energy.';
+  if (snapshot.adapterState === 'unauthorized') return 'Allow Bluetooth access to find your Fikk device.';
+  if (snapshot.status === 'error' && snapshot.error?.includes('No compatible')) return 'No compatible device was found. Move closer and scan again.';
+  if (snapshot.status === 'ready') return 'Your device is ready and synchronized.';
+  if (snapshot.status === 'scanning') return 'Searching for nearby Fikk devices for a few seconds.';
+  return 'Scan for a nearby device or reconnect the last one used.';
+}
+
+function friendlyError(error: string): string {
+  if (error.includes('permission')) return 'Bluetooth access is required. Allow it and try again.';
+  if (error.includes('adapter is off')) return 'Bluetooth is off. Turn it on and try again.';
+  if (error.includes('No compatible')) return 'No compatible device was found. Try scanning again.';
+  return 'The device is not ready. Try again or choose another device.';
+}
+
 const styles = StyleSheet.create({
-  title: { fontSize: 28, fontWeight: '700', color: '#0f172a' },
-  sectionTitle: { marginTop: 28, marginBottom: 8, fontSize: 22, fontWeight: '700', color: '#0f172a' },
-  label: { marginTop: 14, fontSize: 13, fontWeight: '600', color: '#64748b', textTransform: 'uppercase' },
-  value: { marginTop: 4, color: '#0f172a' },
-  error: { marginTop: 14, padding: 12, color: '#b91c1c', backgroundColor: '#fee2e2', borderRadius: 8 },
-  buttonRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginVertical: 16 },
-  loader: { marginBottom: 14 },
-  deviceCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 10, padding: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: '#cbd5e1', borderRadius: 8, backgroundColor: '#ffffff' },
-  deviceDetails: { flex: 1, gap: 2 },
-  deviceName: { fontWeight: '600', color: '#0f172a' },
-  deviceMeta: { fontSize: 12, color: '#64748b' },
-  diagnostics: { gap: 4, marginTop: 18, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#cbd5e1' },
+  statusCard: { gap: 10 },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  cardLabel: { color: colors.textMuted, fontSize: 13, fontWeight: '800', letterSpacing: 0.7, textTransform: 'uppercase' },
+  statusValue: { color: colors.text, fontSize: 21, fontWeight: '800' },
+  helper: { color: colors.textMuted, fontSize: 15, lineHeight: 22 },
+  error: { borderRadius: 14, padding: 16, color: colors.danger, backgroundColor: colors.dangerSoft, lineHeight: 22 },
+  actionGroup: { gap: 12 },
+  loader: { alignSelf: 'flex-start' },
+  deviceList: { gap: 12 },
+  sectionTitle: { color: colors.text, fontSize: 20, fontWeight: '800' },
+  deviceCard: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 },
+  deviceDetails: { flex: 1, gap: 4 },
+  deviceName: { color: colors.text, fontSize: 16, fontWeight: '800' },
+  deviceMeta: { color: colors.textMuted, fontSize: 13 },
+  deviceButton: { minWidth: 96, minHeight: 44, paddingHorizontal: 12 },
+  connectedCard: { gap: 8, borderColor: colors.success, backgroundColor: colors.successSoft },
 });

@@ -1,5 +1,5 @@
 import type { PropsWithChildren } from 'react';
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useBluetooth } from '../bluetooth/BluetoothProvider';
 import { createNativeTrainingSessionRepository } from '../history/sqlite-session-repository';
 import type { TrainingSession } from '../history/session-repository';
@@ -42,16 +42,22 @@ export function TrainingProvider({ children }: PropsWithChildren) {
     };
   }, [connection, controller]);
 
+  const start = useCallback((notes: string) => controller.start(notes), [controller]);
+  const saveResult = useCallback(() => controller.saveResult(), [controller]);
+  const discardResult = useCallback(() => controller.discardResult(), [controller]);
+  const listSessions = useCallback(() => controller.listSessions(), [controller]);
+  const getSession = useCallback((id: string) => controller.getSession(id), [controller]);
+
   const value = useMemo(
     () => ({
       snapshot,
-      start: (notes: string) => controller.start(notes),
-      saveResult: () => controller.saveResult(),
-      discardResult: () => controller.discardResult(),
-      listSessions: () => controller.listSessions(),
-      getSession: (id: string) => controller.getSession(id),
+      start,
+      saveResult,
+      discardResult,
+      listSessions,
+      getSession,
     }),
-    [controller, snapshot],
+    [getSession, listSessions, saveResult, discardResult, start, snapshot],
   );
 
   return <TrainingContext.Provider value={value}>{children}</TrainingContext.Provider>;

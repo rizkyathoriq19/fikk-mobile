@@ -4,7 +4,7 @@
     "slug": "fikk-mobile",
     "version": "0.1.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "scheme": "fikk-mobile",
     "ios": {
       "supportsTablet": true,
