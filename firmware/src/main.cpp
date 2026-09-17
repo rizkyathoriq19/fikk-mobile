@@ -6,7 +6,11 @@
 #include <BLEServer.h>
 #include <BLEService.h>
 #include <BLEUtils.h>
+#include <LiquidCrystal_I2C.h>
+#include <Wire.h>
 
+#include <cstdio>
+#include <cstring>
 #include <string>
 
 #include "BleProfile.h"
@@ -20,7 +24,18 @@ using namespace FikkProtocol;
 namespace {
 
 constexpr uint8_t kDefaultTargetCount = 6;
+constexpr uint8_t kIrSensorPin = 26;
+constexpr uint8_t kStartButtonPin = 12;
+constexpr uint8_t kLcdSclPin = 22;
+constexpr uint8_t kLcdSdaPin = 21;
+// ponytail: keep the common 20x4 backpack address configurable; scan if a board uses another address.
+constexpr uint8_t kLcdAddress = 0x27;
+constexpr uint32_t kDisplayRefreshMs = 250;
+constexpr uint8_t kLcdColumns = 20;
+constexpr uint8_t kLcdRows = 4;
+#if defined(FIKK_DEV_SIMULATION) && FIKK_DEV_SIMULATION
 constexpr uint32_t kSimulationIntervalMs = 2000;
+#endif
 
 class TrainingDevice;
 TrainingDevice* g_trainingDevice = nullptr;
@@ -55,10 +70,15 @@ class TrainingDevice {
   void handleStop(const Packet& command);
   void handleSync(const Packet& command);
   void handleAckResult(const Packet& command);
+  void handlePhysicalStart();
   void registerBallDetection();
   void completeSession(CompletionReason reason);
   void resetToReady();
+  void updateDisplay();
+  void writeLcdLine(uint8_t row, const char* text);
+#if defined(FIKK_DEV_SIMULATION) && FIKK_DEV_SIMULATION
   void runDevelopmentSimulation();
+#endif
 
   void sendAck(uint32_t sessionId, MessageType command, AckStatus status);
   void sendProgress();
@@ -88,7 +108,12 @@ class TrainingDevice {
   CompletionReason completionReason_ = CompletionReason::TargetReached;
   bool resultRetained_ = false;
   BallDetectionDebouncer inputDebouncer_;
+  bool startButtonPressed_ = false;
+  uint32_t lastDisplayAtMs_ = 0;
+#if defined(FIKK_DEV_SIMULATION) && FIKK_DEV_SIMULATION
   uint32_t lastSimulationAtMs_ = 0;
+#endif
+  LiquidCrystal_I2C lcd_{kLcdAddress, kLcdColumns, kLcdRows};
 };
 
 class ServerCallbacks final : public BLEServerCallbacks {
@@ -123,6 +148,15 @@ class ControlCallbacks final : public BLECharacteristicCallbacks {
 
 void TrainingDevice::begin() {
   Serial.println("BOOT");
+  pinMode(kIrSensorPin, INPUT);
+  // GPIO12 is a strapping pin; use the documented external 3.3V pull resistor.
+  pinMode(kStartButtonPin, INPUT);
+  startButtonPressed_ = digitalRead(kStartButtonPin) == LOW;
+  Wire.begin(kLcdSdaPin, kLcdSclPin);
+  lcd_.init();
+  lcd_.backlight();
+  updateDisplay();
+
   BLEDevice::init(FikkBleProfile::kLocalName);
   Serial.println("BLE_INIT");
 
@@ -149,7 +183,7 @@ void TrainingDevice::begin() {
       FikkBleProfile::kDeviceInfoUuid,
       BLECharacteristic::PROPERTY_READ);
   const std::string deviceInfo =
-      std::string("firmware=") + FikkBleProfile::kFirmwareVersion +
+      std::string("product=OVbAT;firmware=") + FikkBleProfile::kFirmwareVersion +
       ";protocol=" + FikkBleProfile::kProtocolVersion +
       ";board=" + FikkBleProfile::kBoardName +
       ";chip=" + FikkBleProfile::kUnknownChipModule +
@@ -169,8 +203,19 @@ void TrainingDevice::begin() {
 }
 
 void TrainingDevice::loop() {
-#if FIKK_DEV_SIMULATION
+#if defined(FIKK_DEV_SIMULATION) && FIKK_DEV_SIMULATION
   runDevelopmentSimulation();
+#else
+  const uint32_t now = millis();
+  const bool startButtonPressed = digitalRead(kStartButtonPin) == LOW;
+  if (startButtonPressed && !startButtonPressed_) {
+    handlePhysicalStart();
+  }
+  startButtonPressed_ = startButtonPressed;
+  handleSensorLevel(digitalRead(kIrSensorPin) == HIGH, now);
+  if (now - lastDisplayAtMs_ >= kDisplayRefreshMs) {
+    updateDisplay();
+  }
 #endif
 }
 
@@ -180,6 +225,20 @@ void TrainingDevice::onClientConnected() {
 
 void TrainingDevice::onClientDisconnected() {
   Serial.println("BLE client disconnected; logical session preserved");
+}
+
+void TrainingDevice::handlePhysicalStart() {
+  if (deviceState_ != DeviceState::Armed) {
+    return;
+  }
+
+  startedAtMs_ = millis();
+  durationMs_ = 0;
+  deviceState_ = DeviceState::Active;
+  Serial.println("PHYSICAL_START");
+  Serial.println("STATE_CHANGE ACTIVE");
+  sendState();
+  updateDisplay();
 }
 
 void TrainingDevice::handleSensorLevel(bool sensorActive, uint32_t nowMs) {
@@ -231,7 +290,7 @@ void TrainingDevice::handleStart(const Packet& command) {
     return;
   }
 
-  if (deviceState_ == DeviceState::Active && command.sessionId == sessionId_) {
+  if ((deviceState_ == DeviceState::Armed || deviceState_ == DeviceState::Active) && command.sessionId == sessionId_) {
     sendAck(sessionId_, MessageType::Start, AckStatus::Accepted);
     return;
   }
@@ -247,16 +306,16 @@ void TrainingDevice::handleStart(const Packet& command) {
   resultSequence_ = 0;
   targetCount_ = requestedTarget;
   count_ = 0;
-  startedAtMs_ = millis();
+  startedAtMs_ = 0;
   durationMs_ = 0;
   resultRetained_ = false;
-  deviceState_ = DeviceState::Active;
-  lastSimulationAtMs_ = startedAtMs_;
+  deviceState_ = DeviceState::Armed;
 
   Serial.println("START");
-  Serial.println("STATE_CHANGE ACTIVE");
+  Serial.println("STATE_CHANGE ARMED");
   sendAck(sessionId_, MessageType::Start, AckStatus::Accepted);
   sendState();
+  updateDisplay();
 }
 
 void TrainingDevice::handleStop(const Packet& command) {
@@ -304,6 +363,7 @@ void TrainingDevice::completeSession(CompletionReason reason) {
   Serial.println("STATE_CHANGE COMPLETED");
   sendComplete();
   sendState();
+  updateDisplay();
 }
 
 void TrainingDevice::resetToReady() {
@@ -318,6 +378,7 @@ void TrainingDevice::resetToReady() {
   resultRetained_ = false;
   Serial.println("STATE_CHANGE READY");
   sendState();
+  updateDisplay();
 }
 
 void TrainingDevice::registerBallDetection() {
@@ -334,8 +395,10 @@ void TrainingDevice::registerBallDetection() {
   } else {
     sendState();
   }
+  updateDisplay();
 }
 
+#if defined(FIKK_DEV_SIMULATION) && FIKK_DEV_SIMULATION
 void TrainingDevice::runDevelopmentSimulation() {
   if (deviceState_ != DeviceState::Active) {
     return;
@@ -353,6 +416,50 @@ void TrainingDevice::runDevelopmentSimulation() {
     Serial.print('/');
     Serial.println(static_cast<unsigned int>(targetCount_));
     registerBallDetection();
+  }
+}
+#endif
+
+void TrainingDevice::updateDisplay() {
+  char line[21] = {};
+  writeLcdLine(0, "OVbAT TRAINING");
+  if (deviceState_ == DeviceState::Ready) {
+    writeLcdLine(1, "Ready");
+    writeLcdLine(2, "Press START");
+    writeLcdLine(3, "");
+  } else if (deviceState_ == DeviceState::Armed) {
+    writeLcdLine(1, "Press device btn");
+    std::snprintf(line, sizeof(line), "Target: %u balls", targetCount_);
+    writeLcdLine(2, line);
+    writeLcdLine(3, "");
+  } else if (deviceState_ == DeviceState::Active) {
+    std::snprintf(line, sizeof(line), "Count: %u/%u", count_, targetCount_);
+    writeLcdLine(1, line);
+    const uint32_t elapsed = elapsedMs() / 1000;
+    std::snprintf(line, sizeof(line), "Time: %02lu:%02lu", static_cast<unsigned long>(elapsed / 60), static_cast<unsigned long>(elapsed % 60));
+    writeLcdLine(2, line);
+    writeLcdLine(3, "Sensor: READY");
+  } else if (deviceState_ == DeviceState::Completed) {
+    writeLcdLine(1, "Completed");
+    std::snprintf(line, sizeof(line), "Count: %u/%u", count_, targetCount_);
+    writeLcdLine(2, line);
+    const uint32_t duration = durationMs_ / 1000;
+    std::snprintf(line, sizeof(line), "Time: %02lu:%02lu", static_cast<unsigned long>(duration / 60), static_cast<unsigned long>(duration % 60));
+    writeLcdLine(3, line);
+  } else {
+    writeLcdLine(1, "Error");
+    writeLcdLine(2, "Check device");
+    writeLcdLine(3, "");
+  }
+  lastDisplayAtMs_ = millis();
+}
+
+void TrainingDevice::writeLcdLine(uint8_t row, const char* text) {
+  lcd_.setCursor(0, row);
+  lcd_.print(text);
+  const size_t length = std::strlen(text);
+  for (size_t index = length; index < kLcdColumns; ++index) {
+    lcd_.print(' ');
   }
 }
 

@@ -17,6 +17,18 @@ test('START messages round-trip with little-endian session fields', () => {
   assert.deepEqual(decodeMessage(encoded), message);
 });
 
+test('ARMED state round-trips with the new device state code', () => {
+  const message = {
+    version: 1,
+    messageType: MESSAGE_TYPES.STATE,
+    sessionId: 9,
+    sequence: 16,
+    payload: { state: 4, count: 0, elapsedMs: 0 },
+  } as const;
+
+  assert.deepEqual(decodeMessage(encodeMessage(message)), message);
+});
+
 test('unsupported protocol versions are rejected', () => {
   assert.throws(
     () => decodeMessage(Uint8Array.from([2, 1, 0, 0, 0, 0, 0, 0, 6])),

@@ -35,6 +35,8 @@ export interface BluetoothPermissionGateway {
 export interface DeviceIdentityStore {
   load(): Promise<string | null>;
   save(deviceId: string): Promise<void>;
+  loadDevice?(): Promise<BleDevice | null>;
+  saveDevice?(device: BleDevice): Promise<void>;
 }
 
 export type ProtocolMessageListener = (message: ProtocolMessage) => void;
@@ -61,6 +63,8 @@ const initialSnapshot: ConnectionSnapshot = {
   lastDeviceId: null,
   error: null,
 };
+
+const NO_COMPATIBLE_DEVICE_ERROR = 'No compatible BLE device found after the scan';
 
 export class BluetoothConnectionController {
   private currentSnapshot: ConnectionSnapshot = initialSnapshot;
@@ -122,8 +126,8 @@ export class BluetoothConnectionController {
       if (this.currentSnapshot.status === 'scanning') {
         this.update(
           this.currentSnapshot.devices.length === 0
-            ? { status: 'error', error: 'No compatible BLE device found after the scan' }
-            : { status: 'disconnected' },
+            ? { status: 'error', error: NO_COMPATIBLE_DEVICE_ERROR }
+            : { status: 'disconnected', error: null },
         );
       }
     } catch (error) {
@@ -166,6 +170,10 @@ export class BluetoothConnectionController {
       const deviceState = this.decodeState(stateBytes);
       const deviceInfo = decodeText(deviceInfoBytes);
       await this.options.deviceStore.save(device.id);
+      const saveDevice = this.options.deviceStore.saveDevice;
+      if (saveDevice !== undefined) {
+        await saveDevice(device).catch(() => undefined);
+      }
       this.lastKnownDevice = device;
       this.notificationUnsubscribers = unsubscribers;
       this.update({
@@ -202,7 +210,10 @@ export class BluetoothConnectionController {
   }
 
   async reconnectLastDevice(): Promise<void> {
-    const device = this.lastKnownDevice ?? this.currentSnapshot.devices.find((item) => item.id === this.currentSnapshot.lastDeviceId);
+    let device = this.lastKnownDevice ?? this.currentSnapshot.devices.find((item) => item.id === this.currentSnapshot.lastDeviceId);
+    if (device === undefined && this.options.deviceStore.loadDevice !== undefined) {
+      device = (await this.options.deviceStore.loadDevice().catch(() => null)) ?? undefined;
+    }
     if (device === undefined) {
       this.fail(new Error('No last BLE device is available for recovery'));
       return;
@@ -266,7 +277,12 @@ export class BluetoothConnectionController {
     const devices = this.currentSnapshot.devices.some((item) => item.id === device.id)
       ? this.currentSnapshot.devices.map((item) => (item.id === device.id ? device : item))
       : [...this.currentSnapshot.devices, device];
-    this.update({ devices });
+    const staleNoDeviceError =
+      this.currentSnapshot.status === 'error' && this.currentSnapshot.error === NO_COMPATIBLE_DEVICE_ERROR;
+    this.update({
+      devices,
+      ...(staleNoDeviceError ? { status: 'disconnected', error: null } : {}),
+    });
   }
 
   private handleTransportDisconnect(): void {

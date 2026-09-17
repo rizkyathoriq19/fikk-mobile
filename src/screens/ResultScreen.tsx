@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Button, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { ResultField } from '../components/ResultField';
 import { Screen } from '../components/Screen';
+import { ActionButton, Card, ScreenTitle, colors } from '../components/ui';
 import { useTraining } from '../features/training/TrainingProvider';
-import { formatCompletionReason } from '../features/training/labels';
+import { formatCompletionReason, formatDuration } from '../features/training/labels';
 
 export function ResultScreen() {
   const router = useRouter();
@@ -20,8 +21,8 @@ export function ResultScreen() {
     setActionError(null);
     void saveResult()
       .then(() => router.replace('/history'))
-      .catch((error: unknown) => {
-        setActionError(toError(error).message);
+      .catch(() => {
+        setActionError('Unable to save this result. Please try again.');
         setBusy(false);
         setAction(null);
       });
@@ -33,8 +34,8 @@ export function ResultScreen() {
     setActionError(null);
     void discardResult()
       .then(() => router.replace('/'))
-      .catch((error: unknown) => {
-        setActionError(toError(error).message);
+      .catch(() => {
+        setActionError('Unable to discard this result. Please try again.');
         setBusy(false);
         setAction(null);
       });
@@ -43,77 +44,76 @@ export function ResultScreen() {
   if (snapshot.state !== 'completed' || result === null) {
     return (
       <Screen>
-        <Text accessibilityRole="header" style={styles.title}>
-          Result
-        </Text>
-        <Text style={styles.helper}>No completed training session is available.</Text>
-        <View style={styles.button}>
-          <Button title="Back to Home" onPress={() => router.replace('/')} />
-        </View>
+        <ScreenTitle eyebrow="Training result" title="No result yet" subtitle="Complete a session to see its device-recorded result here." />
+        <ActionButton title="Back to Home" onPress={() => router.replace('/')} />
       </Screen>
     );
   }
 
   return (
     <Screen>
-      <Text accessibilityRole="header" style={styles.title}>
-        Training Result
-      </Text>
-      <Text style={styles.subtitle}>Device-authoritative session result</Text>
+      <ScreenTitle eyebrow="Training result" title="Session complete" subtitle="Your OVbAT device recorded this result." />
 
-      <View style={styles.hero}>
+      <Card style={styles.hero}>
         <Text style={styles.heroValue}>
           {result.count}/{snapshot.targetCount}
         </Text>
         <Text style={styles.heroLabel}>balls completed</Text>
-      </View>
+      </Card>
 
-      <ResultField label="Authoritative duration" value={`${result.durationMs} ms`} />
-      <ResultField label="Started" value={snapshot.startedAt ?? '—'} />
-      <ResultField label="Completed" value={snapshot.completedAt ?? '—'} />
-      <ResultField label="Notes" value={snapshot.notes || 'No notes'} />
-      <ResultField label="Device" value={snapshot.deviceName ?? 'Unknown device'} />
-      <ResultField label="Completion reason" value={formatCompletionReason(result.reason)} />
+      <Card style={styles.detailsCard}>
+        <ResultField label="Duration" value={formatDuration(result.durationMs)} />
+        <ResultField label="Started" value={formatDate(snapshot.startedAt)} />
+        <ResultField label="Completed" value={formatDate(snapshot.completedAt)} />
+        <ResultField label="Notes" value={snapshot.notes || 'No notes'} />
+        <ResultField label="Device" value={snapshot.deviceName ?? 'Unknown device'} />
+        <ResultField label="Completion" value={formatCompletionReason(result.reason)} />
+      </Card>
 
       {actionError && (
         <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.error}>
           {actionError}
         </Text>
       )}
-      <View style={styles.button}>
-        <Button
+      <View style={styles.actions}>
+        <ActionButton
           accessibilityLabel="Save training result"
-          accessibilityState={{ busy: action === 'save', disabled: busy }}
           disabled={busy}
-          title={action === 'save' ? 'Saving…' : 'Save Result'}
+          loading={action === 'save'}
+          title="Save Result"
           onPress={handleSave}
         />
-      </View>
-      <View style={styles.secondaryButton}>
-        <Button
+        <ActionButton
           accessibilityLabel="Discard training result"
-          accessibilityState={{ busy: action === 'discard', disabled: busy }}
           disabled={busy}
-          title={action === 'discard' ? 'Discarding…' : 'Discard'}
-          onPress={handleDiscard}
+          loading={action === 'discard'}
+          title="Discard"
+          variant="danger"
+          onPress={() =>
+            Alert.alert('Discard this result?', 'This result will not be saved to History.', [
+              { text: 'Keep Result', style: 'cancel' },
+              { text: 'Discard', style: 'destructive', onPress: handleDiscard },
+            ])
+          }
         />
       </View>
     </Screen>
   );
 }
 
-function toError(error: unknown): Error {
-  return error instanceof Error ? error : new Error(String(error));
+function formatDate(value: string | null): string {
+  if (value === null) {
+    return '—';
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 28, fontWeight: '700', color: '#0f172a' },
-  subtitle: { marginTop: 6, color: '#64748b' },
-  hero: { marginTop: 24, padding: 20, borderRadius: 12, backgroundColor: '#eff6ff' },
-  heroValue: { fontSize: 40, fontWeight: '800', color: '#1d4ed8' },
-  heroLabel: { marginTop: 4, color: '#1e3a8a' },
-  helper: { marginTop: 18, color: '#64748b' },
-  error: { marginTop: 18, padding: 12, color: '#b91c1c', backgroundColor: '#fee2e2', borderRadius: 8 },
-  button: { marginTop: 28 },
-  secondaryButton: { marginTop: 12 },
+  hero: { gap: 4, borderColor: colors.primary, backgroundColor: colors.primarySoft },
+  heroValue: { color: colors.primary, fontSize: 52, fontWeight: '800', letterSpacing: -1 },
+  heroLabel: { color: '#18398d', fontSize: 15, fontWeight: '700' },
+  detailsCard: { paddingVertical: 4 },
+  error: { borderRadius: 14, padding: 16, color: colors.danger, backgroundColor: colors.dangerSoft, lineHeight: 22 },
+  actions: { gap: 12 },
 });

@@ -9,7 +9,20 @@ enum class DeviceState : uint8_t {
   Active = 1,
   Completed = 2,
   Error = 3,
+  Armed = 4,
 };
+
+inline bool isKnownDeviceState(uint8_t value) {
+  switch (static_cast<DeviceState>(value)) {
+    case DeviceState::Ready:
+    case DeviceState::Active:
+    case DeviceState::Completed:
+    case DeviceState::Error:
+    case DeviceState::Armed:
+      return true;
+  }
+  return false;
+}
 
 enum class AckStatus : uint8_t {
   Accepted = 0,

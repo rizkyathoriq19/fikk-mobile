@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Button, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { ResultField } from '../components/ResultField';
 import { Screen } from '../components/Screen';
+import { ActionButton, Card, ScreenTitle, colors } from '../components/ui';
 import { useTraining } from '../features/training/TrainingProvider';
-import { formatCompletionReason } from '../features/training/labels';
+import { formatDuration } from '../features/training/labels';
 import type { TrainingSession } from '../features/history/session-repository';
 
 export function HistoryDetailScreen() {
@@ -49,39 +50,31 @@ export function HistoryDetailScreen() {
 
   return (
     <Screen>
-      <Text accessibilityRole="header" style={styles.title}>
-        Session Detail
-      </Text>
-      {loading && <ActivityIndicator style={styles.loading} />}
+      <ScreenTitle eyebrow="Saved result" title="Session detail" subtitle={session ? formatDate(session.completedAt) : 'Review a saved training session.'} />
+      {loading && <ActivityIndicator color={colors.primary} style={styles.loading} />}
       {error && (
         <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.error}>
-          {error}
+          This session could not be loaded. Please return to History and try again.
         </Text>
       )}
       {!loading && !error && session === null && (
-        <Text style={styles.helper}>This session is no longer available.</Text>
+        <Card style={styles.emptyState}>
+          <Text style={styles.emptyTitle}>Session unavailable</Text>
+          <Text style={styles.helper}>This saved session is no longer available on this device.</Text>
+        </Card>
       )}
       {!loading && !error && session !== null && (
-        <>
-          <Text style={styles.subtitle}>{formatDate(session.completedAt)}</Text>
+        <Card style={styles.detailsCard}>
           <ResultField label="Final count" value={`${session.finalCount}/${session.targetCount}`} />
-          <ResultField label="Authoritative duration" value={`${session.durationMs} ms`} />
-          <ResultField label="Started" value={session.startedAt} />
-          <ResultField label="Completed" value={session.completedAt} />
+          <ResultField label="Duration" value={formatDuration(session.durationMs)} />
+          <ResultField label="Started" value={formatDate(session.startedAt)} />
+          <ResultField label="Completed" value={formatDate(session.completedAt)} />
           <ResultField label="Notes" value={session.notes || 'No notes'} />
           <ResultField label="Device" value={session.deviceName ?? 'Unknown device'} />
-          <ResultField label="Device ID" value={session.deviceKey} />
-          <ResultField label="Status" value={session.status} />
-          <ResultField label="Protocol version" value={String(session.protocolVersion)} />
-        </>
+          <ResultField label="Status" value={formatSessionStatus(session.status)} />
+        </Card>
       )}
-      <View style={styles.button}>
-        <Button
-          accessibilityLabel="Back to History"
-          title="Back to History"
-          onPress={() => router.replace('/history')}
-        />
-      </View>
+      <ActionButton title="Back to History" onPress={() => router.replace('/history')} />
     </Screen>
   );
 }
@@ -91,11 +84,22 @@ function formatDate(value: string): string {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
+function formatSessionStatus(status: TrainingSession['status']): string {
+  switch (status) {
+    case 'completed':
+      return 'Completed';
+    case 'recovered':
+      return 'Recovered';
+    case 'cancelled':
+      return 'Cancelled';
+  }
+}
+
 const styles = StyleSheet.create({
-  title: { fontSize: 28, fontWeight: '700', color: '#0f172a' },
-  subtitle: { marginTop: 6, color: '#64748b' },
   loading: { marginTop: 24 },
-  helper: { marginTop: 24, color: '#64748b' },
-  error: { marginTop: 20, padding: 12, color: '#b91c1c', backgroundColor: '#fee2e2', borderRadius: 8 },
-  button: { marginTop: 28 },
+  emptyState: { gap: 8, backgroundColor: colors.surfaceMuted },
+  emptyTitle: { color: colors.text, fontSize: 18, fontWeight: '800' },
+  helper: { color: colors.textMuted, fontSize: 15, lineHeight: 22 },
+  error: { borderRadius: 14, padding: 16, color: colors.danger, backgroundColor: colors.dangerSoft, lineHeight: 22 },
+  detailsCard: { paddingVertical: 4 },
 });

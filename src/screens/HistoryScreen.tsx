@@ -1,9 +1,11 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ActivityIndicator, Button, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Screen } from '../components/Screen';
+import { ActionButton, ScreenTitle, colors } from '../components/ui';
 import { useTraining } from '../features/training/TrainingProvider';
 import type { TrainingSession } from '../features/history/session-repository';
+import { formatDuration } from '../features/training/labels';
 
 export function HistoryScreen() {
   const router = useRouter();
@@ -42,20 +44,20 @@ export function HistoryScreen() {
 
   return (
     <Screen>
-      <Text accessibilityRole="header" style={styles.title}>
-        History
-      </Text>
-      <Text style={styles.subtitle}>Saved sessions available offline.</Text>
+      <ScreenTitle eyebrow="Your progress" title="History" subtitle="Saved sessions, available offline." />
 
-      {loading && <ActivityIndicator style={styles.loading} />}
+      {loading && <ActivityIndicator color={colors.primary} style={styles.loading} />}
       {error && (
         <View style={styles.errorBox}>
-          <Text style={styles.error}>{error}</Text>
-          <Button title="Retry" onPress={() => setReloadKey((value) => value + 1)} />
+          <Text style={styles.error}>History could not be loaded. Please try again.</Text>
+          <ActionButton title="Try again" onPress={() => setReloadKey((value) => value + 1)} variant="secondary" />
         </View>
       )}
       {!loading && !error && sessions.length === 0 && (
-        <Text style={styles.helper}>No saved training sessions yet.</Text>
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyTitle}>No sessions yet</Text>
+          <Text style={styles.helper}>Complete your first training session and it will appear here.</Text>
+        </View>
       )}
       {!loading && !error && sessions.map((session) => (
         <Pressable
@@ -66,13 +68,14 @@ export function HistoryScreen() {
           onPress={() => router.push(`/history/${session.id}`)}
           style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
         >
-          <Text style={styles.date}>{formatDate(session.completedAt)}</Text>
-          <Text style={styles.notes}>{notesPreview(session.notes)}</Text>
+          <View style={styles.rowHeader}>
+            <Text style={styles.date}>{formatDate(session.completedAt)}</Text>
+            <Text style={styles.chevron}>›</Text>
+          </View>
+          <Text style={styles.notes} numberOfLines={2}>{notesPreview(session.notes)}</Text>
           <View style={styles.summary}>
-            <Text style={styles.summaryText}>
-              {session.finalCount}/{session.targetCount} balls
-            </Text>
-            <Text style={styles.summaryText}>{session.durationMs} ms</Text>
+            <Text style={styles.summaryText}>{session.finalCount}/{session.targetCount} balls</Text>
+            <Text style={styles.summaryText}>{formatDuration(session.durationMs)}</Text>
           </View>
         </Pressable>
       ))}
@@ -94,16 +97,18 @@ function notesPreview(notes: string | null): string {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 28, fontWeight: '700', color: '#0f172a' },
-  subtitle: { marginTop: 6, color: '#64748b' },
   loading: { marginTop: 24 },
-  helper: { marginTop: 24, color: '#64748b' },
-  errorBox: { marginTop: 20, padding: 12, borderRadius: 8, backgroundColor: '#fee2e2' },
-  error: { marginBottom: 12, color: '#b91c1c' },
-  row: { marginTop: 16, padding: 16, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, backgroundColor: '#ffffff' },
-  rowPressed: { backgroundColor: '#eff6ff' },
-  date: { fontWeight: '700', color: '#0f172a' },
-  notes: { marginTop: 8, color: '#475569' },
-  summary: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
-  summaryText: { fontSize: 13, fontWeight: '600', color: '#1d4ed8' },
+  emptyState: { gap: 8, borderRadius: 18, padding: 20, backgroundColor: colors.surfaceMuted },
+  emptyTitle: { color: colors.text, fontSize: 18, fontWeight: '800' },
+  helper: { color: colors.textMuted, fontSize: 15, lineHeight: 22 },
+  errorBox: { gap: 14, borderRadius: 18, padding: 18, backgroundColor: colors.dangerSoft },
+  error: { color: colors.danger, fontSize: 15, lineHeight: 22 },
+  row: { gap: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 18, padding: 18, backgroundColor: colors.surface },
+  rowPressed: { backgroundColor: colors.primarySoft },
+  rowHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  date: { color: colors.text, fontSize: 16, fontWeight: '800' },
+  chevron: { color: colors.primary, fontSize: 28, lineHeight: 28 },
+  notes: { color: colors.textMuted, fontSize: 15, lineHeight: 22 },
+  summary: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, paddingTop: 12 },
+  summaryText: { color: colors.primary, fontSize: 14, fontWeight: '800' },
 });

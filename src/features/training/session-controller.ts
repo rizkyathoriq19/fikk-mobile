@@ -12,7 +12,7 @@ import type { ConnectionSnapshot } from '../bluetooth/connection-controller';
 
 export const MVP_TARGET_COUNT = 6 as const;
 
-export type TrainingState = 'idle' | 'starting' | 'recovering' | 'active' | 'completed' | 'error';
+export type TrainingState = 'idle' | 'starting' | 'armed' | 'recovering' | 'active' | 'completed' | 'error';
 
 export type TrainingResult = {
   count: number;
@@ -215,7 +215,7 @@ export class TrainingSessionController {
 
   async start(notes: string): Promise<void> {
     const normalizedNotes = normalizeNotes(notes);
-    if (this.currentSnapshot.state === 'starting' || this.currentSnapshot.state === 'active') {
+    if (this.currentSnapshot.state === 'starting' || this.currentSnapshot.state === 'armed' || this.currentSnapshot.state === 'active') {
       throw new Error('a training session is already starting or active');
     }
     if (!this.isConnectionReady()) {
@@ -278,6 +278,11 @@ export class TrainingSessionController {
         if (state.sessionId !== sessionId) {
           continue;
         }
+        if (state.payload.state === DEVICE_STATES.ARMED) {
+          this.acceptArmedState(state);
+          await this.persistenceChain;
+          return;
+        }
         if (state.payload.state === DEVICE_STATES.ACTIVE) {
           this.acceptActiveState(state);
           await this.persistenceChain;
@@ -301,7 +306,10 @@ export class TrainingSessionController {
   }
 
   private handleConnectionSnapshot(snapshot: ConnectionSnapshot): void {
-    const liveSession = this.currentSnapshot.state === 'starting' || this.currentSnapshot.state === 'active';
+    const liveSession =
+      this.currentSnapshot.state === 'starting' ||
+      this.currentSnapshot.state === 'armed' ||
+      this.currentSnapshot.state === 'active';
     const disconnected = snapshot.status !== 'ready' || snapshot.connectedDevice === null;
 
     if (liveSession && disconnected) {
@@ -524,7 +532,7 @@ export class TrainingSessionController {
       this.clearPendingStart();
       if (message.payload.status === ACK_STATUS.ACCEPTED) {
         this.highestSequence = message.sequence;
-        this.update({ state: 'active', startedAt: this.clock(), error: null });
+        this.update({ state: 'armed', startedAt: null, error: null });
         pendingStart.resolve();
       } else {
         pendingStart.reject(new Error(`START rejected with status ${message.payload.status}`));
@@ -602,10 +610,25 @@ export class TrainingSessionController {
     }
 
     if (message.messageType === MESSAGE_TYPES.STATE) {
+      if (!isValidProgress(message.payload.count, message.payload.elapsedMs, this.currentSnapshot)) {
+        return;
+      }
       if (
-        message.payload.state !== DEVICE_STATES.ACTIVE ||
-        !isValidProgress(message.payload.count, message.payload.elapsedMs, this.currentSnapshot)
+        message.payload.state === DEVICE_STATES.ARMED &&
+        (this.currentSnapshot.state === 'starting' || this.currentSnapshot.state === 'armed' || this.currentSnapshot.state === 'recovering')
       ) {
+        this.highestSequence = message.sequence;
+        this.update({
+          state: 'armed',
+          startedAt: null,
+          count: message.payload.count,
+          elapsedMs: message.payload.elapsedMs,
+          error: null,
+        });
+        this.resolveRecovery();
+        return;
+      }
+      if (message.payload.state !== DEVICE_STATES.ACTIVE) {
         return;
       }
       this.highestSequence = message.sequence;
@@ -641,6 +664,17 @@ export class TrainingSessionController {
     this.update({
       state: 'active',
       startedAt: this.currentSnapshot.startedAt ?? this.clock(),
+      count: state.payload.count,
+      elapsedMs: state.payload.elapsedMs,
+      error: null,
+    });
+  }
+
+  private acceptArmedState(state: StateMessage): void {
+    this.highestSequence = state.sequence;
+    this.update({
+      state: 'armed',
+      startedAt: null,
       count: state.payload.count,
       elapsedMs: state.payload.elapsedMs,
       error: null,
@@ -744,7 +778,9 @@ function toPersistedSession(snapshot: TrainingSnapshot, highestSequence: number)
         ? 'active'
         : snapshot.state === 'starting'
           ? 'starting'
-          : 'recovering';
+          : snapshot.state === 'armed'
+            ? 'armed'
+            : 'recovering';
 
   return {
     state,

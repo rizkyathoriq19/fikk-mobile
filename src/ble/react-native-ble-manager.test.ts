@@ -11,7 +11,7 @@ import { createBleProfile } from './profile';
 
 const discoveredInfo: PeripheralInfo = {
   id: 'device-1',
-  name: 'Fikk Trainer',
+  name: 'OVbAT-ESP32',
   rssi: -42,
   advertising: { serviceUUIDs: ['service-1'] },
   serviceUUIDs: ['service-1'],
@@ -35,7 +35,7 @@ test('native adapter maps the BLE manager lifecycle behind the transport seam', 
     scan: async () => {
       discoverPeripheral?.({
         id: 'device-1',
-        name: 'Fikk Trainer',
+        name: 'OVbAT-ESP32',
         rssi: -42,
         advertising: { serviceUUIDs: ['service-1'] },
       });
@@ -100,7 +100,7 @@ test('native adapter maps the BLE manager lifecycle behind the transport seam', 
 
   await transport.connect({
     id: 'device-1',
-    name: 'Fikk Trainer',
+    name: 'OVbAT-ESP32',
     rssi: -42,
     serviceUuids: ['service-1'],
   });
@@ -130,6 +130,63 @@ test('native adapter maps the BLE manager lifecycle behind the transport seam', 
     'stopNotify:device-1:service-1:event-1',
     'disconnect:device-1',
   ]);
+});
+
+test('native adapter waits for an in-flight write before disconnecting', async () => {
+  const calls: string[] = [];
+  let signalWriteStarted!: () => void;
+  let releaseWrite!: () => void;
+  const writeStarted = new Promise<void>((resolve) => {
+    signalWriteStarted = resolve;
+  });
+  const writeRelease = new Promise<void>((resolve) => {
+    releaseWrite = resolve;
+  });
+  const client: BleManagerClient = {
+    start: async () => undefined,
+    checkState: async () => 'on',
+    scan: async () => undefined,
+    stopScan: async () => undefined,
+    connect: async (id) => {
+      calls.push(`connect:${id}`);
+    },
+    disconnect: async (id) => {
+      calls.push(`disconnect:${id}`);
+    },
+    retrieveServices: async () => discoveredInfo,
+    startNotification: async () => undefined,
+    stopNotification: async () => undefined,
+    read: async () => [],
+    write: async () => {
+      calls.push('write');
+      signalWriteStarted();
+      await writeRelease;
+    },
+    onDiscoverPeripheral: () => ({ remove: () => undefined }),
+    onDidUpdateValueForCharacteristic: () => ({ remove: () => undefined }),
+  };
+  const transport = new ReactNativeBleManagerTransport(client, createBleProfile({
+    serviceUuid: 'service-1',
+    characteristics: {
+      CONTROL: 'control-1',
+      EVENT: 'event-1',
+      STATE: 'state-1',
+      DEVICE_INFO: 'info-1',
+    },
+  }));
+
+  await transport.connect({ id: 'device-1', name: 'OVbAT-ESP32', rssi: -42, serviceUuids: ['service-1'] });
+  await transport.discover();
+  const write = transport.writeControl(Uint8Array.of(1));
+  await writeStarted;
+  const disconnect = transport.disconnect();
+
+  await Promise.resolve();
+  assert.deepEqual(calls, ['connect:device-1', 'write']);
+
+  releaseWrite();
+  await Promise.all([write, disconnect]);
+  assert.deepEqual(calls, ['connect:device-1', 'write', 'disconnect:device-1']);
 });
 
 test('native adapter requires discovery before protocol operations', async () => {
@@ -201,7 +258,7 @@ test('native adapter rejects a connection missing required GATT characteristics'
 
   await transport.connect({
     id: 'device-1',
-    name: 'Fikk Trainer',
+    name: 'OVbAT-ESP32',
     rssi: -42,
     serviceUuids: ['service-1'],
   });
@@ -279,7 +336,7 @@ test('native adapter forwards a peripheral disconnect event', async () => {
     },
   });
   const transport = new ReactNativeBleManagerTransport(client, profile);
-  await transport.connect({ id: 'device-1', name: 'Fikk Trainer', rssi: -42, serviceUuids: ['service-1'] });
+  await transport.connect({ id: 'device-1', name: 'OVbAT-ESP32', rssi: -42, serviceUuids: ['service-1'] });
 
   let disconnects = 0;
   const unsubscribe = transport.onDisconnect(() => {

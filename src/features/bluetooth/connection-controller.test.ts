@@ -12,7 +12,7 @@ import {
 test('BLE permission is lazy and Ready follows scan, discovery, subscriptions, and sync', async () => {
   const device: BleDevice = {
     id: 'device-1',
-    name: 'Fikk-ESP32',
+    name: 'OVbAT-ESP32',
     rssi: -44,
     serviceUuids: [FIKK_BLE_PROFILE.serviceUuid],
   };
@@ -118,7 +118,7 @@ test('Bluetooth adapter off is exposed without entering scan state', async () =>
 test('invalid initial state does not leave a phantom connected device', async () => {
   const device: BleDevice = {
     id: 'device-1',
-    name: 'Fikk-ESP32',
+    name: 'OVbAT-ESP32',
     rssi: -44,
     serviceUuids: [FIKK_BLE_PROFILE.serviceUuid],
   };
@@ -157,6 +157,34 @@ test('scan with no compatible devices reports a recoverable no-device state', as
   assert.equal(controller.snapshot.error, 'No compatible BLE device found after the scan');
 });
 
+test('late scan results clear a stale no-device error', async () => {
+  const device: BleDevice = {
+    id: 'device-1',
+    name: 'OVbAT-ESP32',
+    rssi: -44,
+    serviceUuids: [FIKK_BLE_PROFILE.serviceUuid],
+  };
+  const transport = new (class extends FakeBleTransport {
+    override async scan(options: Parameters<FakeBleTransport['scan']>[0]): Promise<void> {
+      setTimeout(() => options.onDevice(device), 0);
+    }
+  })();
+  const controller = new BluetoothConnectionController({
+    transport,
+    permissions: { request: async () => undefined },
+    deviceStore: { load: async () => null, save: async () => undefined },
+    profile: FIKK_BLE_PROFILE,
+  });
+
+  await controller.scan();
+  assert.equal(controller.snapshot.error, 'No compatible BLE device found after the scan');
+
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(controller.snapshot.status, 'disconnected');
+  assert.equal(controller.snapshot.error, null);
+  assert.deepEqual(controller.snapshot.devices, [device]);
+});
+
 test('connection timeout becomes a recoverable error', async () => {
   const transport = new (class extends FakeBleTransport {
     async connect(): Promise<void> {
@@ -173,7 +201,7 @@ test('connection timeout becomes a recoverable error', async () => {
 
   await controller.connect({
     id: 'device-1',
-    name: 'Fikk-ESP32',
+    name: 'OVbAT-ESP32',
     rssi: -42,
     serviceUuids: [FIKK_BLE_PROFILE.serviceUuid],
   });
@@ -185,7 +213,7 @@ test('connection timeout becomes a recoverable error', async () => {
 test('unexpected disconnect preserves identity, reconnects, and syncs the same session', async () => {
   const device: BleDevice = {
     id: 'device-1',
-    name: 'Fikk-ESP32',
+    name: 'OVbAT-ESP32',
     rssi: -44,
     serviceUuids: [FIKK_BLE_PROFILE.serviceUuid],
   };
@@ -228,4 +256,48 @@ test('unexpected disconnect preserves identity, reconnects, and syncs the same s
     sequence: 0,
     payload: {},
   });
+});
+
+test('last device reconnects after the controller is recreated', async () => {
+  const device: BleDevice = {
+    id: 'device-1',
+    name: 'OVbAT-ESP32',
+    rssi: -44,
+    serviceUuids: [FIKK_BLE_PROFILE.serviceUuid],
+  };
+  const state = encodeMessage({
+    version: 1,
+    messageType: MESSAGE_TYPES.STATE,
+    sessionId: 0,
+    sequence: 1,
+    payload: { state: 0, count: 0, elapsedMs: 0 },
+  });
+  let storedDevice: BleDevice | null = null;
+  const deviceStore: DeviceIdentityStore = {
+    load: async () => storedDevice?.id ?? null,
+    save: async () => undefined,
+    loadDevice: async () => storedDevice,
+    saveDevice: async (nextDevice) => {
+      storedDevice = nextDevice;
+    },
+  };
+  const createController = () =>
+    new BluetoothConnectionController({
+      transport: new FakeBleTransport({ readValues: { STATE: state } }),
+      permissions: { request: async () => undefined },
+      deviceStore,
+      profile: FIKK_BLE_PROFILE,
+    });
+
+  const firstController = createController();
+  await firstController.connect(device);
+  firstController.dispose();
+
+  const recreatedController = createController();
+  await recreatedController.loadLastDevice();
+  await recreatedController.reconnectLastDevice();
+
+  assert.equal(recreatedController.snapshot.lastDeviceId, device.id);
+  assert.equal(recreatedController.snapshot.connectedDevice?.name, device.name);
+  assert.equal(recreatedController.snapshot.status, 'ready');
 });

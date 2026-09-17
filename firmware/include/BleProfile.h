@@ -2,7 +2,7 @@
 
 namespace FikkBleProfile {
 
-constexpr char kLocalName[] = "Fikk-ESP32";
+constexpr char kLocalName[] = "OVbAT-ESP32";
 constexpr char kBoardName[] = "ESP32 DevKit V1";
 constexpr char kFirmwareVersion[] = "0.1.0";
 constexpr char kProtocolVersion[] = "1";
