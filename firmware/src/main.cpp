@@ -30,7 +30,8 @@ constexpr uint8_t kLcdSclPin = 22;
 constexpr uint8_t kLcdSdaPin = 21;
 // ponytail: keep the common 20x4 backpack address configurable; scan if a board uses another address.
 constexpr uint8_t kLcdAddress = 0x27;
-constexpr uint32_t kDisplayRefreshMs = 250;
+// The timer is displayed with one-second precision; avoid overloading the LCD I2C bus.
+constexpr uint32_t kDisplayRefreshMs = 1000;
 constexpr uint8_t kLcdColumns = 20;
 constexpr uint8_t kLcdRows = 4;
 #if defined(FIKK_DEV_SIMULATION) && FIKK_DEV_SIMULATION
