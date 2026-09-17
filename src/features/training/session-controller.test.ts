@@ -20,7 +20,7 @@ import {
 
 const device: BleDevice = {
   id: 'device-1',
-  name: 'Fikk-ESP32',
+  name: 'OVbAT-ESP32',
   rssi: -42,
   serviceUuids: [FIKK_BLE_PROFILE.serviceUuid],
 };
@@ -146,6 +146,16 @@ function acceptedStart(sessionId: number): ProtocolMessage {
   };
 }
 
+function activeState(sessionId: number, sequence = 2, count = 0, elapsedMs = 0): ProtocolMessage {
+  return {
+    version: 1,
+    messageType: MESSAGE_TYPES.STATE,
+    sessionId,
+    sequence,
+    payload: { state: DEVICE_STATES.ACTIVE, count, elapsedMs },
+  };
+}
+
 function complete(sessionId: number, sequence: number, count: number, durationMs: number): ProtocolMessage {
   return {
     version: 1,
@@ -156,11 +166,13 @@ function complete(sessionId: number, sequence: number, count: number, durationMs
   };
 }
 
-test('start trims notes, encodes START, and enters Active only after accepted ACK', async () => {
+test('start trims notes, enters Armed after ACK, and waits for Device Active state', async () => {
   const connection = new FakeTrainingConnection();
+  let timestamp = 0;
   const controller = new TrainingSessionController({
     connection,
     sessionIdFactory: () => 0x01020304,
+    clock: () => `timestamp-${++timestamp}`,
     startAckTimeoutMs: 50,
   });
 
@@ -173,10 +185,21 @@ test('start trims notes, encodes START, and enters Active only after accepted AC
   connection.emit(acceptedStart(0x01020304));
   await start;
 
-  assert.equal(controller.snapshot.state, 'active');
+  assert.equal(controller.snapshot.state, 'armed');
   assert.equal(controller.snapshot.sessionId, 0x01020304);
   assert.equal(controller.snapshot.notes, 'morning session');
   assert.equal(controller.snapshot.targetCount, 6);
+
+  connection.emit({
+    version: 1,
+    messageType: MESSAGE_TYPES.STATE,
+    sessionId: 0x01020304,
+    sequence: 2,
+    payload: { state: 1, count: 0, elapsedMs: 0 },
+  });
+
+  assert.equal(controller.snapshot.state, 'active');
+  assert.equal(controller.snapshot.startedAt, 'timestamp-1');
 });
 
 test('progress is accepted for the active session and duplicate starts are blocked', async () => {
@@ -190,12 +213,13 @@ test('progress is accepted for the active session and duplicate starts are block
   await Promise.resolve();
   connection.emit(acceptedStart(7));
   await start;
+  connection.emit(activeState(7));
 
   connection.emit({
     version: 1,
     messageType: MESSAGE_TYPES.PROGRESS,
     sessionId: 7,
-    sequence: 2,
+    sequence: 3,
     payload: { count: 2, elapsedMs: 900 },
   });
 
@@ -270,6 +294,7 @@ test('START timeout retries once after a Ready state check', async () => {
   };
 
   await controller.start('notes');
+  connection.emit(activeState(sessionId));
 
   assert.equal(connection.writes.length, 2);
   assert.equal(controller.snapshot.state, 'active');
@@ -288,12 +313,13 @@ test('complete uses authoritative values and ignores stale or regressing progres
   await Promise.resolve();
   connection.emit(acceptedStart(55));
   await start;
+  connection.emit(activeState(55));
 
   connection.emit({
     version: 1,
     messageType: MESSAGE_TYPES.PROGRESS,
     sessionId: 55,
-    sequence: 2,
+    sequence: 3,
     payload: { count: 4, elapsedMs: 2400 },
   });
   connection.emit({
@@ -348,7 +374,7 @@ test('complete uses authoritative values and ignores stale or regressing progres
   assert.equal(controller.snapshot.startedAt, 'timestamp-1');
   assert.equal(controller.snapshot.completedAt, 'timestamp-2');
   assert.equal(controller.snapshot.notes, 'session notes');
-  assert.equal(controller.snapshot.deviceName, 'Fikk-ESP32');
+  assert.equal(controller.snapshot.deviceName, 'OVbAT-ESP32');
 
   connection.emit(complete(55, 4, 1, 100));
   assert.equal(controller.snapshot.result?.count, 6);
@@ -371,7 +397,8 @@ async function makeCompletedSession(
   await Promise.resolve();
   connection.emit(acceptedStart(sessionId));
   await start;
-  connection.emit(complete(sessionId, 2, 6, 1600));
+  connection.emit(activeState(sessionId));
+  connection.emit(complete(sessionId, 3, 6, 1600));
   assert.equal(controller.snapshot.state, 'completed');
   return { connection, controller };
 }
@@ -397,7 +424,7 @@ test('Save persists one result before sending ACK_RESULT, including repeated Sav
   assert.equal(saved.startedAt, 'timestamp-1');
   assert.equal(saved.completedAt, 'timestamp-2');
   assert.equal(saved.deviceKey, 'device-1');
-  assert.equal(saved.deviceName, 'Fikk-ESP32');
+  assert.equal(saved.deviceName, 'OVbAT-ESP32');
   assert.equal(saved.status, 'completed');
   assert.equal(saved.protocolVersion, 1);
   assert.deepEqual(decodeMessage(connection.writes[1]), {
@@ -405,7 +432,7 @@ test('Save persists one result before sending ACK_RESULT, including repeated Sav
     messageType: MESSAGE_TYPES.ACK_RESULT,
     sessionId: 42,
     sequence: 0,
-    payload: { resultSequence: 2 },
+    payload: { resultSequence: 3 },
   });
   assert.equal(controller.snapshot.state, 'idle');
 });
@@ -423,7 +450,7 @@ test('Discard sends ACK_RESULT without persisting the completed result', async (
     messageType: MESSAGE_TYPES.ACK_RESULT,
     sessionId: 43,
     sequence: 0,
-    payload: { resultSequence: 2 },
+    payload: { resultSequence: 3 },
   });
   assert.equal(controller.snapshot.state, 'idle');
   assert.equal(controller.snapshot.sessionId, null);
@@ -453,6 +480,7 @@ test('disconnect recovers an active session with SYNC and never sends START agai
   await Promise.resolve();
   connection.emit(acceptedStart(77));
   await start;
+  connection.emit(activeState(77));
   connection.onReconnect = () => {
     connection.setConnectionSnapshot({
       status: 'ready',
@@ -493,6 +521,7 @@ test('disconnect recovery surfaces a retained completed Result', async () => {
   await Promise.resolve();
   connection.emit(acceptedStart(88));
   await start;
+  connection.emit(activeState(88));
   connection.onReconnect = () => {
     connection.setConnectionSnapshot({ status: 'ready', connectedDevice: device });
   };
@@ -527,6 +556,7 @@ test('disconnect recovery reports when the device no longer retains the session'
   await Promise.resolve();
   connection.emit(acceptedStart(99));
   await start;
+  connection.emit(activeState(99));
   connection.onReconnect = () => {
     connection.setConnectionSnapshot({ status: 'ready', connectedDevice: device });
   };
@@ -564,6 +594,7 @@ test('relaunch restores an active session and synchronizes without sending START
   await Promise.resolve();
   connection.emit(acceptedStart(123));
   await start;
+  connection.emit(activeState(123));
   connection.emit({
     version: 1,
     messageType: MESSAGE_TYPES.PROGRESS,
@@ -621,7 +652,8 @@ test('relaunch restores a completed result without creating a new session', asyn
   await Promise.resolve();
   connection.emit(acceptedStart(456));
   await start;
-  connection.emit(complete(456, 2, 6, 2200));
+  connection.emit(activeState(456));
+  connection.emit(complete(456, 3, 6, 2200));
   await flushPersistence();
   original.dispose();
   connection.recoveryCalls.length = 0;
@@ -703,12 +735,13 @@ test('device ERROR stops an active session without creating a result', async () 
   await Promise.resolve();
   connection.emit(acceptedStart(654));
   await start;
+  connection.emit(activeState(654));
 
   connection.emit({
     version: 1,
     messageType: MESSAGE_TYPES.ERROR,
     sessionId: 654,
-    sequence: 2,
+    sequence: 3,
     payload: { errorCode: 0x0004 },
   });
 

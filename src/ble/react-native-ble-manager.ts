@@ -40,6 +40,7 @@ export class ReactNativeBleManagerTransport implements BleTransport {
   private connectedDevice: BleDevice | null = null;
   private discovered = false;
   private readonly disconnectListeners = new Set<() => void>();
+  private commandChain: Promise<void> = Promise.resolve();
 
   constructor(
     private readonly client: BleManagerClient,
@@ -153,7 +154,9 @@ export class ReactNativeBleManagerTransport implements BleTransport {
     });
 
     try {
-      await this.client.startNotification(peripheralId, this.profile.serviceUuid, characteristicUuid);
+      await this.enqueueCommand(() =>
+        this.client.startNotification(peripheralId, this.profile.serviceUuid, characteristicUuid),
+      );
     } catch (error) {
       valueSubscription.remove();
       throw error;
@@ -161,38 +164,45 @@ export class ReactNativeBleManagerTransport implements BleTransport {
 
     return () => {
       valueSubscription.remove();
-      void this.client.stopNotification(peripheralId, this.profile.serviceUuid, characteristicUuid);
+      void this.enqueueCommand(() =>
+        this.client.stopNotification(peripheralId, this.profile.serviceUuid, characteristicUuid),
+      ).catch(() => undefined);
     };
   }
 
   async read(channel: ReadChannel): Promise<Uint8Array> {
     const peripheralId = this.requireDiscoveredConnection();
-    const value = await this.client.read(
-      peripheralId,
-      this.profile.serviceUuid,
-      this.profile.characteristics[channel],
+    const value = await this.enqueueCommand(() =>
+      this.client.read(peripheralId, this.profile.serviceUuid, this.profile.characteristics[channel]),
     );
     return Uint8Array.from(value);
   }
 
   async writeControl(value: Uint8Array): Promise<void> {
     const peripheralId = this.requireDiscoveredConnection();
-    await this.client.write(
-      peripheralId,
-      this.profile.serviceUuid,
-      this.profile.characteristics.CONTROL,
-      [...value],
+    await this.enqueueCommand(() =>
+      this.client.write(
+        peripheralId,
+        this.profile.serviceUuid,
+        this.profile.characteristics.CONTROL,
+        [...value],
+      ),
     );
   }
 
   async disconnect(): Promise<void> {
-    if (!this.connectedDevice) {
+    const peripheralId = this.connectedDevice?.id;
+    if (!peripheralId) {
       return;
     }
-    const peripheralId = this.connectedDevice.id;
-    await this.client.disconnect(peripheralId);
-    this.connectedDevice = null;
-    this.discovered = false;
+    await this.enqueueCommand(async () => {
+      if (this.connectedDevice?.id !== peripheralId) {
+        return;
+      }
+      await this.client.disconnect(peripheralId);
+      this.connectedDevice = null;
+      this.discovered = false;
+    });
   }
 
   onDisconnect(listener: () => void): () => void {
@@ -235,5 +245,14 @@ export class ReactNativeBleManagerTransport implements BleTransport {
       throw new Error('a connected and discovered connection is required');
     }
     return peripheralId;
+  }
+
+  private enqueueCommand<T>(operation: () => Promise<T>): Promise<T> {
+    const next = this.commandChain.catch(() => undefined).then(operation);
+    this.commandChain = next.then(
+      () => undefined,
+      () => undefined,
+    );
+    return next;
   }
 }

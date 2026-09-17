@@ -5,7 +5,7 @@ export type PersistedTrainingResult = {
   sequence: number;
 };
 
-export type PersistedTrainingSessionState = 'starting' | 'active' | 'recovering' | 'completed';
+export type PersistedTrainingSessionState = 'starting' | 'armed' | 'active' | 'recovering' | 'completed';
 
 export type PersistedTrainingSession = {
   state: PersistedTrainingSessionState;

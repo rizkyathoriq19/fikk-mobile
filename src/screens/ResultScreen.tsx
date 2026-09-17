@@ -52,7 +52,7 @@ export function ResultScreen() {
 
   return (
     <Screen>
-      <ScreenTitle eyebrow="Training result" title="Session complete" subtitle="Your Fikk device recorded this result." />
+      <ScreenTitle eyebrow="Training result" title="Session complete" subtitle="Your OVbAT device recorded this result." />
 
       <Card style={styles.hero}>
         <Text style={styles.heroValue}>

@@ -101,7 +101,7 @@ inline bool isValidPayload(const Packet& packet) {
     case MessageType::Start:
       return packet.payloadLength == 1 && packet.payload[0] > 0;
     case MessageType::State:
-      return packet.payloadLength == 6 && packet.payload[0] <= static_cast<uint8_t>(DeviceState::Error);
+      return packet.payloadLength == 6 && FikkDevice::isKnownDeviceState(packet.payload[0]);
     default:
       return true;
   }

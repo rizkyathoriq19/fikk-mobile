@@ -21,7 +21,7 @@ export function SettingsScreen() {
 
   return (
     <Screen>
-      <ScreenTitle eyebrow="Device setup" title="Settings" subtitle="Connect your Fikk device before starting a session." />
+      <ScreenTitle eyebrow="Device setup" title="Settings" subtitle="Connect your OVbAT device before starting a session." />
 
       <Card style={styles.statusCard}>
         <View style={styles.cardHeader}>
@@ -58,7 +58,7 @@ export function SettingsScreen() {
           <ActionButton
             accessibilityLabel="Disconnect current device"
             title="Disconnect"
-            variant="outline"
+            variant="danger"
             onPress={() => void disconnect()}
           />
         )}
@@ -71,7 +71,7 @@ export function SettingsScreen() {
           {snapshot.devices.map((device) => (
             <Card key={device.id} style={styles.deviceCard}>
               <View style={styles.deviceDetails}>
-                <Text style={styles.deviceName}>{device.name ?? 'Unnamed Fikk device'}</Text>
+                <Text style={styles.deviceName}>{device.name ?? 'Unnamed OVbAT device'}</Text>
                 <Text style={styles.deviceMeta}>Signal strength: {device.rssi ?? 'unknown'}</Text>
               </View>
               <ActionButton
@@ -89,7 +89,7 @@ export function SettingsScreen() {
       {snapshot.status === 'ready' && (
         <Card style={styles.connectedCard}>
           <Text style={styles.cardLabel}>Ready device</Text>
-          <Text style={styles.deviceName}>{snapshot.connectedDevice?.name ?? 'Fikk device'}</Text>
+          <Text style={styles.deviceName}>{snapshot.connectedDevice?.name ?? 'OVbAT device'}</Text>
           <Text style={styles.helper}>Ready for a new training session.</Text>
         </Card>
       )}
@@ -114,10 +114,10 @@ function statusTone(snapshot: ReturnType<typeof useBluetooth>['snapshot']): 'suc
 function statusDescription(snapshot: ReturnType<typeof useBluetooth>['snapshot']): string {
   if (snapshot.adapterState === 'off') return 'Turn on Bluetooth in Android Settings, then scan again.';
   if (snapshot.adapterState === 'unsupported') return 'This device does not support Bluetooth Low Energy.';
-  if (snapshot.adapterState === 'unauthorized') return 'Allow Bluetooth access to find your Fikk device.';
+  if (snapshot.adapterState === 'unauthorized') return 'Allow Bluetooth access to find your OVbAT device.';
   if (snapshot.status === 'error' && snapshot.error?.includes('No compatible')) return 'No compatible device was found. Move closer and scan again.';
   if (snapshot.status === 'ready') return 'Your device is ready and synchronized.';
-  if (snapshot.status === 'scanning') return 'Searching for nearby Fikk devices for a few seconds.';
+  if (snapshot.status === 'scanning') return 'Searching for nearby OVbAT devices for a few seconds.';
   return 'Scan for a nearby device or reconnect the last one used.';
 }
 

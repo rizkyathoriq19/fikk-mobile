@@ -25,7 +25,7 @@ export function ActiveTrainingScreen() {
     void reconnectLastDevice().finally(() => setReconnecting(false));
   };
 
-  if (training.state !== 'active' && training.state !== 'recovering') {
+  if (training.state !== 'armed' && training.state !== 'active' && training.state !== 'recovering') {
     return (
       <Screen>
         <ScreenTitle eyebrow="Training" title="No active session" subtitle="Start a new session from Home when your device is ready." />
@@ -36,18 +36,19 @@ export function ActiveTrainingScreen() {
   }
 
   const recovering = training.state === 'recovering';
+  const armed = training.state === 'armed';
   return (
     <Screen>
       <ScreenTitle
         eyebrow="Training session"
-        title={recovering ? 'Recovering session' : 'Stay focused'}
-        subtitle={recovering ? 'Your device may still be training. We are synchronizing its state.' : 'Progress comes from your Fikk device.'}
+        title={recovering ? 'Recovering session' : armed ? 'Press the device button' : 'Stay focused'}
+        subtitle={recovering ? 'Your device may still be training. We are synchronizing its state.' : armed ? 'The timer starts when you press the physical button.' : 'Progress comes from your OVbAT device.'}
       />
 
       <Card style={styles.progressCard}>
         <View style={styles.cardHeader}>
           <Text style={styles.cardLabel}>Device status</Text>
-          <StatusPill label={recovering ? 'Recovery' : 'Active'} tone={recovering ? 'warning' : 'success'} />
+          <StatusPill label={recovering ? 'Recovery' : armed ? 'Armed' : 'Active'} tone={recovering || armed ? 'warning' : 'success'} />
         </View>
         <Text style={styles.status}>{formatConnectionStatus(bluetooth)}</Text>
         <Text style={styles.count}>
@@ -68,6 +69,13 @@ export function ActiveTrainingScreen() {
           </View>
         </View>
       </Card>
+
+      {armed && (
+        <Card style={styles.recoveryCard}>
+          <Text style={styles.recoveryTitle}>Waiting for physical start</Text>
+          <Text style={styles.recoveryText}>Press the start button on your OVbAT device to begin timing.</Text>
+        </Card>
+      )}
 
       {recovering && (
         <Card style={styles.recoveryCard}>

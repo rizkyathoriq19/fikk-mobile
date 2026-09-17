@@ -17,7 +17,7 @@ export function formatConnectionStatus(snapshot: ConnectionSnapshot): string {
     case 'requesting-permission':
       return 'Requesting Bluetooth access…';
     case 'scanning':
-      return 'Searching for your Fikk device…';
+      return 'Searching for your OVbAT device…';
     case 'connecting':
       return 'Connecting…';
     case 'discovering':

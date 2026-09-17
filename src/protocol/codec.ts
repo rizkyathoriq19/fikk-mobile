@@ -19,6 +19,7 @@ export const DEVICE_STATES = {
   ACTIVE: 1,
   COMPLETED: 2,
   ERROR: 3,
+  ARMED: 4,
 } as const;
 
 export type DeviceState = (typeof DEVICE_STATES)[keyof typeof DEVICE_STATES];

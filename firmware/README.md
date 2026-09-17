@@ -1,4 +1,4 @@
-# Fikk Mobile ESP32 BLE Firmware
+# OVbAT ESP32 BLE Firmware
 
 Minimal Arduino-framework firmware for the confirmed **ESP32 DevKit V1** development board.
 
@@ -18,7 +18,8 @@ The project uses:
 - `espressif32@6.10.0`
 - Arduino framework
 - PlatformIO board target `esp32dev`
-- `FIKK_DEV_SIMULATION=1` by default
+- physical GPIO/LCD input is the default `esp32dev` behavior
+- optional `esp32dev-sim` environment enables `FIKK_DEV_SIMULATION=1`
 
 `esp32dev` is the PlatformIO target for the confirmed ESP32 DevKit V1 board. It does not establish the exact module or hardware revision.
 
@@ -52,14 +53,14 @@ bash scripts/validate-esp32-ble.sh
 
 | Item | Value |
 |---|---|
-| Local name | `Fikk-ESP32` |
+| Local name | `OVbAT-ESP32` |
 | Service UUID | `c8c5aefd-0e30-525e-9bf9-5243913c8127` |
 | CONTROL UUID | `c42f890d-088a-5b19-bcd4-5029fceb2bcc` |
 | EVENT UUID | `57a6c81b-268e-5eed-995b-2149521b911f` |
 | STATE UUID | `8271b32c-fa20-5adc-a4d0-141bf24baa71` |
 | DEVICE_INFO UUID | `98ef338e-f5f8-5ea4-b89f-116d303090a3` |
 
-The UUIDs are stable UUIDv5 values generated once for the Fikk Mobile protocol v1 contract. They are also used by the mobile BLE profile.
+The UUIDs are stable UUIDv5 values generated once for the OVbAT protocol v1 contract. They are also used by the mobile BLE profile.
 
 ### Characteristics
 
@@ -75,8 +76,18 @@ The firmware advertises the custom service UUID and the local name. It restarts 
 `DEVICE_INFO` is a UTF-8 string because the mobile protocol v1 codec defines no separate DEVICE_INFO message type. Current value:
 
 ```text
-firmware=0.1.0;protocol=1;board=ESP32 DevKit V1;chip=unknown;hardware_revision=unknown
+product=OVbAT;firmware=0.1.0;protocol=1;board=ESP32 DevKit V1;chip=unknown;hardware_revision=unknown
 ```
+
+## Physical input and LCD wiring
+
+| Function | GPIO/configuration |
+|---|---|
+| IR sensor | GPIO26, active-HIGH |
+| Device Start Button | GPIO12, active-LOW; use an external 3.3V pull resistor because GPIO12 is a strapping pin |
+| LCD SCL | GPIO22 |
+| LCD SDA | GPIO21 |
+| LCD | 20x4 I2C, address `0x27` |
 
 ## Protocol v1
 
@@ -197,13 +208,11 @@ BLE disconnect callbacks do not alter the logical session. ACTIVE and COMPLETED 
 
 ## DEV SIMULATION
 
-The physical sensor and GPIO wiring are not specified, so this firmware does not assume or configure any sensor pins.
+The normal `esp32dev` environment reads GPIO26 and GPIO12. `BallDetectionDebouncer` accepts one rising IR level per physical pulse and rejects a new pulse inside the 100 ms debounce window.
 
-`BallDetectionDebouncer` is a hardware-agnostic input seam. A future GPIO adapter should pass its boolean sensor level and a monotonic timestamp to `TrainingDevice::handleSensorLevel()`. A rising level is accepted once, repeated high samples are ignored, and a new pulse inside the debounce window is rejected.
+With the explicit `esp32dev-sim` environment (`FIKK_DEV_SIMULATION=1`), while ACTIVE the device increments the count once every 2 seconds through the same `registerBallDetection()` path used by sensor input. The simulation environment is mutually exclusive with the physical input loop. The default mobile target is six.
 
-With `FIKK_DEV_SIMULATION=1`, while ACTIVE the device increments the count once every 2 seconds through the same `registerBallDetection()` path used by sensor input. Every accepted detection emits `BUZZER_FEEDBACK`, `LED_FEEDBACK`, and PROGRESS; the sixth detection emits one COMPLETE and retains the result. The default mobile target is six.
-
-Actual buzzer, LED, and sensor GPIO wiring remain pending until the physical hardware pinout is supplied. The wire contract and session ownership do not depend on those pin assignments.
+The buzzer and LED outputs remain unassigned; no GPIO pins are invented for them.
 
 ## Serial debugging
 
@@ -252,8 +261,8 @@ The ESP32 test was compile-validated in this workspace. Runtime execution requir
 1. Flash the board with `pio run -d firmware -e esp32dev -t upload --upload-port COMx`.
 2. Open `pio device monitor -d firmware -e esp32dev`.
 3. Confirm BOOT, BLE_INIT, and BLE_ADVERTISING.
-4. Open the Fikk Mobile custom development build.
-5. Scan for `Fikk-ESP32` using the service UUID.
+4. Open the OVbAT custom development build.
+5. Scan for `OVbAT-ESP32` using the service UUID.
 6. Connect to the device.
 7. Discover the custom service.
 8. Confirm CONTROL, EVENT, STATE, and DEVICE_INFO.

@@ -93,6 +93,13 @@ void test_state_fixture() {
   assertRoundTrip(packet);
 }
 
+void test_armed_state_fixture() {
+  const Packet packet = makeState(9, 18, DeviceState::Armed, 0, 0);
+  const uint8_t expected[] = {1, 0x84, 9, 0, 0, 0, 18, 0, 4, 0, 0, 0, 0, 0};
+  assertEncodedBytes(packet, expected, sizeof(expected));
+  assertRoundTrip(packet);
+}
+
 void test_error_fixture() {
   const Packet packet = makeError(9, 17, 0xbeef);
   const uint8_t expected[] = {1, 0xff, 9, 0, 0, 0, 17, 0, 0xef, 0xbe};
@@ -139,6 +146,7 @@ void setup() {
   RUN_TEST(test_progress_fixture);
   RUN_TEST(test_complete_fixture);
   RUN_TEST(test_state_fixture);
+  RUN_TEST(test_armed_state_fixture);
   RUN_TEST(test_error_fixture);
   RUN_TEST(test_malformed_packets_are_rejected);
   UNITY_END();

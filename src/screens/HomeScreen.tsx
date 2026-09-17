@@ -18,7 +18,7 @@ export function HomeScreen() {
   const [latestSessionError, setLatestSessionError] = useState(false);
   const ready = bluetooth.status === 'ready' && bluetooth.deviceState?.state === 0;
   const recovering = training.state === 'recovering';
-  const busy = recovering || training.state === 'starting' || training.state === 'active';
+  const busy = recovering || training.state === 'starting' || training.state === 'armed' || training.state === 'active';
 
   useFocusEffect(
     useCallback(() => {
@@ -42,8 +42,8 @@ export function HomeScreen() {
   );
 
   useEffect(() => {
-    if (training.state === 'active' || training.state === 'completed') {
-      router.replace(training.state === 'active' ? '/active' : '/result');
+    if (training.state === 'armed' || training.state === 'active' || training.state === 'completed') {
+      router.replace(training.state === 'completed' ? '/result' : '/active');
     }
   }, [router, training.state]);
 
@@ -62,7 +62,7 @@ export function HomeScreen() {
 
   return (
     <Screen>
-      <ScreenTitle eyebrow="Fikk Mobile" title="Train with focus" subtitle="A simple way to start, track, and review your device training." />
+      <ScreenTitle eyebrow="OVbAT" title="Train with focus" subtitle="A simple way to start, track, and review your device training." />
 
       <Card style={styles.statusCard}>
         <View style={styles.cardHeader}>
@@ -78,7 +78,7 @@ export function HomeScreen() {
       <Card style={styles.startCard}>
         <Text style={styles.cardLabel}>New session</Text>
         <Text style={styles.sectionTitle}>Ready when you are?</Text>
-        <Text style={styles.helper}>Complete 6 balls. Your Fikk device records the official count and duration.</Text>
+        <Text style={styles.helper}>Complete 6 balls. Your OVbAT device records the official count and duration.</Text>
         <TextInput
           accessibilityLabel="Training notes"
           accessibilityHint="Optional multiline notes for this training session, up to 500 characters"

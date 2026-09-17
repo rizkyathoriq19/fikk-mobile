@@ -64,6 +64,8 @@ const initialSnapshot: ConnectionSnapshot = {
   error: null,
 };
 
+const NO_COMPATIBLE_DEVICE_ERROR = 'No compatible BLE device found after the scan';
+
 export class BluetoothConnectionController {
   private currentSnapshot: ConnectionSnapshot = initialSnapshot;
   private readonly listeners = new Set<SnapshotListener>();
@@ -124,8 +126,8 @@ export class BluetoothConnectionController {
       if (this.currentSnapshot.status === 'scanning') {
         this.update(
           this.currentSnapshot.devices.length === 0
-            ? { status: 'error', error: 'No compatible BLE device found after the scan' }
-            : { status: 'disconnected' },
+            ? { status: 'error', error: NO_COMPATIBLE_DEVICE_ERROR }
+            : { status: 'disconnected', error: null },
         );
       }
     } catch (error) {
@@ -275,7 +277,12 @@ export class BluetoothConnectionController {
     const devices = this.currentSnapshot.devices.some((item) => item.id === device.id)
       ? this.currentSnapshot.devices.map((item) => (item.id === device.id ? device : item))
       : [...this.currentSnapshot.devices, device];
-    this.update({ devices });
+    const staleNoDeviceError =
+      this.currentSnapshot.status === 'error' && this.currentSnapshot.error === NO_COMPATIBLE_DEVICE_ERROR;
+    this.update({
+      devices,
+      ...(staleNoDeviceError ? { status: 'disconnected', error: null } : {}),
+    });
   }
 
   private handleTransportDisconnect(): void {

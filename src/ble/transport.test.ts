@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { FakeBleTransport } from './transport';
 
 test('fake transport supports scan, discovery, notifications, and control writes', async () => {
-  const device = { id: 'device-1', name: 'Fikk Trainer', rssi: -42, serviceUuids: ['service-1'] };
+  const device = { id: 'device-1', name: 'OVbAT-ESP32', rssi: -42, serviceUuids: ['service-1'] };
   const transport = new FakeBleTransport({ devices: [device] });
   const discovered: string[] = [];
   const events: number[][] = [];
