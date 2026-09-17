@@ -13,7 +13,7 @@ One intentional attempt to complete the fixed training target, from the device a
 _Avoid_: Workout, run, attempt
 
 **Ready**:
-A Device is connected, prepared, and synchronized well enough to accept a new Training Session.
+A Device is initialized and prepared to accept a new Training Session, with or without an Android connection.
 _Avoid_: Connected, Online
 
 **Active**:
@@ -27,6 +27,18 @@ _Avoid_: Ready, Active
 **Device Start Button**:
 The physical control used to move an Armed Device into Active and begin the Training Session timer.
 _Avoid_: Start Training button
+
+**Training Mode**:
+The session entry path used by a Device: Android + ESP or ESP-only.
+_Avoid_: App mode
+
+**Android + ESP**:
+A Training Mode in which Android sends the session start intent and the Device Start Button begins the timer.
+_Avoid_: Connected mode
+
+**ESP-only**:
+A Training Mode in which the physical Device Start Button starts a local session directly; the completed Result remains on the LCD until the next physical start.
+_Avoid_: Offline mode
 
 **Ball Detection**:
 A valid physical event recognized by the Device and counted toward the Training Session target.

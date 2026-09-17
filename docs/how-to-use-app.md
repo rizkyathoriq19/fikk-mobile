@@ -9,6 +9,18 @@ OVbAT is an offline-first Expo React Native app for operating the OVbAT ESP32 BL
 
 See [`api-contract.md`](./api-contract.md) for the BLE UUID and protocol v1 contract.
 
+## Device-only operation
+
+Android is optional for a local ESP-only Training Session:
+
+1. Leave the Device in `READY`.
+2. Press and release the physical GPIO12 Device Start Button.
+3. The timer starts immediately; send six balls through the GPIO26 IR sensor.
+4. The completed count and duration remain on the LCD.
+5. Release and press the Device Start Button again to start the next session.
+
+For the Android + ESP flow, use the app's Start action first, then press the physical Device Start Button when the LCD shows `Press device btn`.
+
 ## 1. Daily Android development
 
 ### Start Metro

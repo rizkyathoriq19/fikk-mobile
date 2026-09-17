@@ -30,12 +30,18 @@ constexpr uint8_t kLcdSclPin = 22;
 constexpr uint8_t kLcdSdaPin = 21;
 // ponytail: keep the common 20x4 backpack address configurable; scan if a board uses another address.
 constexpr uint8_t kLcdAddress = 0x27;
-constexpr uint32_t kDisplayRefreshMs = 250;
+// The timer is displayed with one-second precision; avoid overloading the LCD I2C bus.
+constexpr uint32_t kDisplayRefreshMs = 1000;
 constexpr uint8_t kLcdColumns = 20;
 constexpr uint8_t kLcdRows = 4;
 #if defined(FIKK_DEV_SIMULATION) && FIKK_DEV_SIMULATION
 constexpr uint32_t kSimulationIntervalMs = 2000;
 #endif
+
+enum class TrainingMode : uint8_t {
+  AndroidEsp,
+  EspOnly,
+};
 
 class TrainingDevice;
 TrainingDevice* g_trainingDevice = nullptr;
@@ -71,6 +77,8 @@ class TrainingDevice {
   void handleSync(const Packet& command);
   void handleAckResult(const Packet& command);
   void handlePhysicalStart();
+  void startEspOnlySession();
+  void prepareSession(uint32_t sessionId, uint8_t targetCount, TrainingMode mode);
   void registerBallDetection();
   void completeSession(CompletionReason reason);
   void resetToReady();
@@ -88,6 +96,7 @@ class TrainingDevice {
   void publishEvent(const Packet& packet);
   void publishStatePacket(const Packet& packet);
   uint16_t nextSequence();
+  uint32_t nextEspOnlySessionId();
   uint32_t elapsedMs() const;
   uint16_t errorCodeFor(DecodeError error) const;
 
@@ -106,6 +115,8 @@ class TrainingDevice {
   uint32_t startedAtMs_ = 0;
   uint32_t durationMs_ = 0;
   CompletionReason completionReason_ = CompletionReason::TargetReached;
+  TrainingMode trainingMode_ = TrainingMode::AndroidEsp;
+  uint32_t espOnlySessionId_ = 0;
   bool resultRetained_ = false;
   BallDetectionDebouncer inputDebouncer_;
   bool startButtonPressed_ = false;
@@ -228,6 +239,12 @@ void TrainingDevice::onClientDisconnected() {
 }
 
 void TrainingDevice::handlePhysicalStart() {
+  if (deviceState_ == DeviceState::Ready ||
+      (deviceState_ == DeviceState::Completed && trainingMode_ == TrainingMode::EspOnly)) {
+    startEspOnlySession();
+    return;
+  }
+
   if (deviceState_ != DeviceState::Armed) {
     return;
   }
@@ -236,6 +253,16 @@ void TrainingDevice::handlePhysicalStart() {
   durationMs_ = 0;
   deviceState_ = DeviceState::Active;
   Serial.println("PHYSICAL_START");
+  Serial.println("STATE_CHANGE ACTIVE");
+  sendState();
+  updateDisplay();
+}
+
+void TrainingDevice::startEspOnlySession() {
+  prepareSession(nextEspOnlySessionId(), kDefaultTargetCount, TrainingMode::EspOnly);
+  startedAtMs_ = millis();
+  deviceState_ = DeviceState::Active;
+  Serial.println("ESP_ONLY_START");
   Serial.println("STATE_CHANGE ACTIVE");
   sendState();
   updateDisplay();
@@ -295,20 +322,14 @@ void TrainingDevice::handleStart(const Packet& command) {
     return;
   }
 
-  if (deviceState_ != DeviceState::Ready) {
+  if (deviceState_ != DeviceState::Ready &&
+      !(deviceState_ == DeviceState::Completed && trainingMode_ == TrainingMode::EspOnly)) {
     sendAck(command.sessionId, MessageType::Start, AckStatus::InvalidState);
     sendError(command.sessionId, static_cast<uint16_t>(ErrorCode::InvalidState));
     return;
   }
 
-  sessionId_ = command.sessionId;
-  eventSequence_ = 0;
-  resultSequence_ = 0;
-  targetCount_ = requestedTarget;
-  count_ = 0;
-  startedAtMs_ = 0;
-  durationMs_ = 0;
-  resultRetained_ = false;
+  prepareSession(command.sessionId, requestedTarget, TrainingMode::AndroidEsp);
   deviceState_ = DeviceState::Armed;
 
   Serial.println("START");
@@ -316,6 +337,18 @@ void TrainingDevice::handleStart(const Packet& command) {
   sendAck(sessionId_, MessageType::Start, AckStatus::Accepted);
   sendState();
   updateDisplay();
+}
+
+void TrainingDevice::prepareSession(uint32_t sessionId, uint8_t targetCount, TrainingMode mode) {
+  sessionId_ = sessionId;
+  eventSequence_ = 0;
+  resultSequence_ = 0;
+  targetCount_ = targetCount;
+  count_ = 0;
+  startedAtMs_ = 0;
+  durationMs_ = 0;
+  trainingMode_ = mode;
+  resultRetained_ = false;
 }
 
 void TrainingDevice::handleStop(const Packet& command) {
@@ -375,6 +408,7 @@ void TrainingDevice::resetToReady() {
   count_ = 0;
   startedAtMs_ = 0;
   durationMs_ = 0;
+  trainingMode_ = TrainingMode::AndroidEsp;
   resultRetained_ = false;
   Serial.println("STATE_CHANGE READY");
   sendState();
@@ -425,7 +459,7 @@ void TrainingDevice::updateDisplay() {
   writeLcdLine(0, "OVbAT TRAINING");
   if (deviceState_ == DeviceState::Ready) {
     writeLcdLine(1, "Ready");
-    writeLcdLine(2, "Press START");
+    writeLcdLine(2, "App START or button");
     writeLcdLine(3, "");
   } else if (deviceState_ == DeviceState::Armed) {
     writeLcdLine(1, "Press device btn");
@@ -440,7 +474,7 @@ void TrainingDevice::updateDisplay() {
     writeLcdLine(2, line);
     writeLcdLine(3, "Sensor: READY");
   } else if (deviceState_ == DeviceState::Completed) {
-    writeLcdLine(1, "Completed");
+    writeLcdLine(1, trainingMode_ == TrainingMode::EspOnly ? "Done - press button" : "Completed");
     std::snprintf(line, sizeof(line), "Count: %u/%u", count_, targetCount_);
     writeLcdLine(2, line);
     const uint32_t duration = durationMs_ / 1000;
@@ -540,6 +574,14 @@ uint16_t TrainingDevice::nextSequence() {
     ++eventSequence_;
   }
   return eventSequence_;
+}
+
+uint32_t TrainingDevice::nextEspOnlySessionId() {
+  ++espOnlySessionId_;
+  if (espOnlySessionId_ == 0) {
+    ++espOnlySessionId_;
+  }
+  return espOnlySessionId_;
 }
 
 uint32_t TrainingDevice::elapsedMs() const {

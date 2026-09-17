@@ -172,15 +172,23 @@ These fixtures match the mobile codec tests. They use the values in the test vec
 
 ## Session behavior
 
-### START
+### Android + ESP mode
 
-- Accepted only in READY.
-- Session ID must be non-zero.
-- Target count must be greater than zero; the mobile MVP sends `6`.
-- Acceptance sets the session ID, clears count, starts the monotonic timer, and enters ACTIVE.
-- The app receives an ACK and a STATE snapshot.
-- Repeating START with the same currently active session ID returns an accepted ACK without resetting timer, count, or target.
-- START with a different session ID while ACTIVE or any START while COMPLETED is rejected and does not reset the device.
+- The mobile app sends `START` with a non-zero session ID and target count `6`.
+- The Device enters ARMED and waits for the physical GPIO12 button.
+- The physical button starts the timer and moves the Device to ACTIVE.
+- The app receives ACK, STATE, PROGRESS, and COMPLETE events, then uses Save or Discard to send `ACK_RESULT`.
+- Repeating START with the same currently armed or active session ID returns an accepted ACK without resetting timer, count, or target.
+- START with a different session ID while ACTIVE or any START while COMPLETED is rejected, except when replacing a completed ESP-only session.
+
+### ESP-only mode
+
+- Press the physical GPIO12 button while the Device is READY.
+- The Device creates a local session, starts the timer immediately, and uses the fixed target count `6`.
+- No Android START, Save, Discard, or `ACK_RESULT` is required.
+- At count six, the result remains in COMPLETED and the LCD shows the final count and duration.
+- Release and press the physical button again to start the next ESP-only session.
+- An Android START can replace a retained ESP-only result when the Device is COMPLETED.
 
 ### STOP
 
@@ -198,7 +206,7 @@ These fixtures match the mobile codec tests. They use the values in the test vec
 
 ### ACK_RESULT
 
-- Accepted only when the session is COMPLETED, the session ID matches, and `resultSequence` matches the retained COMPLETE packet.
+- In Android + ESP mode, accepted only when the session is COMPLETED, the session ID matches, and `resultSequence` matches the retained COMPLETE packet.
 - Returns an accepted ACK, clears the retained result, and transitions to READY.
 - A mismatch returns a rejected ACK and RESULT_NOT_FOUND ERROR without clearing the result.
 
@@ -225,6 +233,7 @@ BLE_ADVERTISING
 BLE_CONNECTED
 BLE_DISCONNECTED
 CONTROL_RX
+ESP_ONLY_START
 START
 STOP
 SYNC
@@ -270,14 +279,16 @@ The ESP32 test was compile-validated in this workspace. Runtime execution requir
 10. Read STATE.
 11. Subscribe to EVENT and STATE notifications.
 12. Send START with a non-zero session ID and target count six.
-13. Confirm accepted ACK and ACTIVE STATE.
-14. Confirm DEV SIMULATION PROGRESS notifications.
-15. Confirm COMPLETE at count six, or send STOP and confirm a stopped result.
-16. Disconnect without resetting the device.
-17. Reconnect and send SYNC.
-18. Confirm ACTIVE or COMPLETED recovery.
-19. Send ACK_RESULT with the retained COMPLETE sequence.
-20. Confirm accepted ACK and READY STATE.
+13. Confirm accepted ACK and ARMED STATE.
+14. Press the physical GPIO12 button and confirm ACTIVE STATE.
+15. Confirm progress notifications and LCD count/time.
+16. Confirm COMPLETE at count six, or send STOP and confirm a stopped result.
+17. Send ACK_RESULT with the retained COMPLETE sequence.
+18. Confirm accepted ACK and READY STATE.
+19. Press the physical button from READY without sending START.
+20. Confirm ESP-only ACTIVE starts immediately with target six.
+21. Confirm the result remains on the LCD after count six.
+22. Release and press the physical button again; confirm the next ESP-only session starts.
 
 ## Known hardware unknowns
 

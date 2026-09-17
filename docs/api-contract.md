@@ -82,6 +82,8 @@ Legal MVP lifecycle:
 
 ```text
 READY → ARMED → ACTIVE → COMPLETED → READY
+  └──────────────────────→ ACTIVE       (ESP-only physical start)
+                         COMPLETED → ACTIVE (ESP-only restart)
   │        │          │
   └────────┴──────────┴─ ERROR may be reported without fabricating a result
 ```
@@ -162,6 +164,8 @@ Example for `sessionId = 0x01020304`:
 
 **Idempotency:** A duplicate START for the same currently armed or active session ID is acknowledged without resetting count, target, or timer. A different session ID while ARMED or ACTIVE is rejected.
 
+The physical ESP-only start path does not write a START packet. Pressing the Device Start Button from READY creates a device-local session with target count `6` and enters ACTIVE immediately. After completion, the result stays on the Device LCD; releasing and pressing the button again starts the next ESP-only session. An Android START may replace a retained ESP-only result in COMPLETED and enters ARMED as usual.
+
 ### 9.2 STOP — `0x02`
 
 **Request:** Mobile writes a one-byte stop reason for the current ACTIVE session.
@@ -198,7 +202,7 @@ SYNC never starts a new session.
 
 ### 9.4 ACK_RESULT — `0x04`
 
-**Request:** Mobile acknowledges the exact sequence of a handled COMPLETE event.
+**Request:** In Android + ESP mode, Mobile acknowledges the exact sequence of a handled COMPLETE event.
 
 Example from the validation fixture (`sessionId = 9`, request sequence `12`, result sequence `0xABCD`):
 
@@ -213,6 +217,8 @@ Example from the validation fixture (`sessionId = 9`, request sequence `12`, res
 **Accepted response:** Device sends an accepted ACK, clears the retained result, and returns to READY.
 
 **Sequence mismatch:** Device sends rejected ACK and RESULT_NOT_FOUND ERROR and retains the result. The mobile app must not guess a replacement sequence.
+
+ESP-only mode does not require ACK_RESULT. Its completed Result remains on the Device LCD until the next physical start or an Android START replaces it.
 
 ## 10. Event contracts
 

@@ -1,5 +1,5 @@
 # Physical start button gates the session timer
 
-The mobile app sends the session start intent and session ID, then the Device enters **Armed**. The Device Start Button is the only action that transitions the Device to **Active** and starts its authoritative timer; IR Ball Detection events are counted only while Active.
+The Device supports two start paths. In **Android + ESP** mode, the mobile app sends the session start intent and session ID, the Device enters **Armed**, and the physical Device Start Button transitions it to **Active**. In **ESP-only** mode, pressing the physical button from **Ready** creates a local session and transitions directly to **Active**. In both modes, the timer starts only on the physical start action and IR Ball Detection events are counted only while Active.
 
-This keeps mobile notes and the app-generated session ID correlated with the Device-owned Result while satisfying the physical-start requirement. The rejected alternative was allowing the Device to create sessions independently from a button press, which would require a larger protocol change and make mobile-side session correlation less reliable.
+Android + ESP preserves the app-generated session ID for mobile Save/Discard correlation. ESP-only keeps the completed result on the LCD and accepts the next physical button press as a new local session without requiring Android acknowledgement.
