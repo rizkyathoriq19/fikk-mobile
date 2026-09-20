@@ -8,12 +8,12 @@ test('START messages round-trip with little-endian session fields', () => {
     messageType: MESSAGE_TYPES.START,
     sessionId: 0x01020304,
     sequence: 0x0506,
-    payload: { targetCount: 6 },
+    payload: { targetCount: 5 },
   } as const;
 
   const encoded = encodeMessage(message);
 
-  assert.deepEqual([...encoded], [1, 1, 4, 3, 2, 1, 6, 5, 6]);
+  assert.deepEqual([...encoded], [1, 1, 4, 3, 2, 1, 6, 5, 5]);
   assert.deepEqual(decodeMessage(encoded), message);
 });
 
@@ -78,14 +78,14 @@ test('all v1 message payloads round-trip through the public codec', () => {
       messageType: MESSAGE_TYPES.COMPLETE,
       sessionId: 9,
       sequence: 15,
-      payload: { count: 6, durationMs: 0x05060708, reason: 1 },
+      payload: { count: 5, durationMs: 0x05060708, reason: 1 },
     },
     {
       version: 1,
       messageType: MESSAGE_TYPES.STATE,
       sessionId: 9,
       sequence: 16,
-      payload: { state: 2, count: 6, elapsedMs: 0x090a0b0c },
+      payload: { state: 2, count: 5, elapsedMs: 0x090a0b0c },
     },
     {
       version: 1,
@@ -109,9 +109,9 @@ test('v1 byte fixtures match the shared firmware contract', () => {
         messageType: MESSAGE_TYPES.START,
         sessionId: 0x01020304,
         sequence: 0x0506,
-        payload: { targetCount: 6 },
+        payload: { targetCount: 5 },
       },
-      [1, 1, 4, 3, 2, 1, 6, 5, 6],
+      [1, 1, 4, 3, 2, 1, 6, 5, 5],
     ],
     [
       {
@@ -169,9 +169,9 @@ test('v1 byte fixtures match the shared firmware contract', () => {
         messageType: MESSAGE_TYPES.COMPLETE,
         sessionId: 9,
         sequence: 15,
-        payload: { count: 6, durationMs: 0x05060708, reason: 1 },
+        payload: { count: 5, durationMs: 0x05060708, reason: 1 },
       },
-      [1, 0x83, 9, 0, 0, 0, 15, 0, 6, 8, 7, 6, 5, 1],
+      [1, 0x83, 9, 0, 0, 0, 15, 0, 5, 8, 7, 6, 5, 1],
     ],
     [
       {
@@ -179,9 +179,9 @@ test('v1 byte fixtures match the shared firmware contract', () => {
         messageType: MESSAGE_TYPES.STATE,
         sessionId: 9,
         sequence: 16,
-        payload: { state: 2, count: 6, elapsedMs: 0x090a0b0c },
+        payload: { state: 2, count: 5, elapsedMs: 0x090a0b0c },
       },
-      [1, 0x84, 9, 0, 0, 0, 16, 0, 2, 6, 12, 11, 10, 9],
+      [1, 0x84, 9, 0, 0, 0, 16, 0, 2, 5, 12, 11, 10, 9],
     ],
     [
       {

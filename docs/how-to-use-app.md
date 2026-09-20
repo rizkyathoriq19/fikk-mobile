@@ -15,7 +15,7 @@ Android is optional for a local ESP-only Training Session:
 
 1. Leave the Device in `READY`.
 2. Press and release the physical GPIO12 Device Start Button.
-3. The timer starts immediately; send six balls through the GPIO26 IR sensor.
+3. The timer starts immediately; send five balls through the GPIO26 IR sensor.
 4. The completed count and duration remain on the LCD.
 5. Release and press the Device Start Button again to start the next session.
 
@@ -159,7 +159,7 @@ Home shows:
 
 - BLE device status;
 - optional training notes;
-- the six-ball training action;
+- the five-ball training action;
 - recovery/error messages;
 - active count and authoritative elapsed time;
 - a link to the completed Result.
@@ -198,7 +198,7 @@ Scanning is bounded to five seconds and stops when the scan finishes. The app do
 4. Tap **Start Training**.
 5. Wait for the device acknowledgement.
 
-The app creates one non-zero BLE session ID and sends `START` with target count `6`. After the device accepts START, it enters `Armed` and waits for the physical GPIO12 button. Press that button on the device to start the timer and enter `Active`. Duplicate start actions are disabled while a session is arming or active.
+The app creates one non-zero BLE session ID and sends `START` with target count `5`. After the device accepts START, it enters `Armed` and waits for the physical GPIO12 button. Press that button on the device to start the timer and enter `Active`. Duplicate start actions are disabled while a session is arming or active.
 
 The ESP32 remains authoritative for:
 
@@ -215,7 +215,7 @@ When the device sends a valid COMPLETE event, Home shows that training is comple
 
 Result displays:
 
-- final count out of six;
+- final count out of five;
 - authoritative device duration;
 - start timestamp;
 - completion timestamp;
@@ -284,7 +284,7 @@ Monitor serial output:
 pio device monitor -d firmware -e esp32dev --port COMx
 ```
 
-The default `esp32dev` firmware build uses the physical GPIO inputs. The optional `esp32dev-sim` environment enables `FIKK_DEV_SIMULATION=1`; while ACTIVE, it sends one qualified detection approximately every two seconds through the same path used by sensor input. It emits bounded buzzer/LED feedback logs, PROGRESS, and one COMPLETE at six.
+The default `esp32dev` firmware build uses the physical GPIO inputs. The optional `esp32dev-sim` environment enables `FIKK_DEV_SIMULATION=1`; while ACTIVE, it sends one qualified detection approximately every two seconds through the same path used by sensor input. It emits bounded buzzer/LED feedback logs, PROGRESS, and one COMPLETE at five.
 
 Simulation validates protocol and software flow only. It does not prove real IR sensor, buzzer, LED, timing, or GPIO behavior.
 

@@ -180,7 +180,7 @@ test('start trims notes, enters Armed after ACK, and waits for Device Active sta
   await Promise.resolve();
   assert.equal(controller.snapshot.state, 'starting');
   assert.equal(connection.writes.length, 1);
-  assert.deepEqual([...connection.writes[0]], [1, 1, 4, 3, 2, 1, 0, 0, 6]);
+  assert.deepEqual([...connection.writes[0]], [1, 1, 4, 3, 2, 1, 0, 0, 5]);
 
   connection.emit(acceptedStart(0x01020304));
   await start;
@@ -188,7 +188,7 @@ test('start trims notes, enters Armed after ACK, and waits for Device Active sta
   assert.equal(controller.snapshot.state, 'armed');
   assert.equal(controller.snapshot.sessionId, 0x01020304);
   assert.equal(controller.snapshot.notes, 'morning session');
-  assert.equal(controller.snapshot.targetCount, 6);
+  assert.equal(controller.snapshot.targetCount, 5);
 
   connection.emit({
     version: 1,
@@ -362,11 +362,11 @@ test('complete uses authoritative values and ignores stale or regressing progres
   assert.equal(controller.snapshot.count, 4);
   assert.equal(controller.snapshot.elapsedMs, 2400);
 
-  connection.emit(complete(55, 6, 6, 3600));
+  connection.emit(complete(55, 6, 5, 3600));
 
   assert.equal(controller.snapshot.state, 'completed');
   assert.deepEqual(controller.snapshot.result, {
-    count: 6,
+    count: 5,
     durationMs: 3600,
     reason: COMPLETION_REASONS.TARGET_REACHED,
     sequence: 6,
@@ -377,7 +377,7 @@ test('complete uses authoritative values and ignores stale or regressing progres
   assert.equal(controller.snapshot.deviceName, 'OVbAT-ESP32');
 
   connection.emit(complete(55, 4, 1, 100));
-  assert.equal(controller.snapshot.result?.count, 6);
+  assert.equal(controller.snapshot.result?.count, 5);
 });
 
 async function makeCompletedSession(
@@ -398,7 +398,7 @@ async function makeCompletedSession(
   connection.emit(acceptedStart(sessionId));
   await start;
   connection.emit(activeState(sessionId));
-  connection.emit(complete(sessionId, 3, 6, 1600));
+  connection.emit(complete(sessionId, 3, 5, 1600));
   assert.equal(controller.snapshot.state, 'completed');
   return { connection, controller };
 }
@@ -418,8 +418,8 @@ test('Save persists one result before sending ACK_RESULT, including repeated Sav
   assert.deepEqual(operations, ['persist', 'write']);
   assert.equal(saved.bleSessionId, 42);
   assert.equal(saved.notes, 'saved notes');
-  assert.equal(saved.targetCount, 6);
-  assert.equal(saved.finalCount, 6);
+  assert.equal(saved.targetCount, 5);
+  assert.equal(saved.finalCount, 5);
   assert.equal(saved.durationMs, 1600);
   assert.equal(saved.startedAt, 'timestamp-1');
   assert.equal(saved.completedAt, 'timestamp-2');
@@ -531,9 +531,9 @@ test('disconnect recovery surfaces a retained completed Result', async () => {
       messageType: MESSAGE_TYPES.STATE,
       sessionId,
       sequence: 3,
-      payload: { state: DEVICE_STATES.COMPLETED, count: 6, elapsedMs: 3200 },
+      payload: { state: DEVICE_STATES.COMPLETED, count: 5, elapsedMs: 3200 },
     });
-    connection.emit(complete(sessionId, 4, 6, 3200));
+    connection.emit(complete(sessionId, 4, 5, 3200));
   };
 
   connection.setConnectionSnapshot({ status: 'disconnected', connectedDevice: null, deviceState: null });
@@ -653,7 +653,7 @@ test('relaunch restores a completed result without creating a new session', asyn
   connection.emit(acceptedStart(456));
   await start;
   connection.emit(activeState(456));
-  connection.emit(complete(456, 3, 6, 2200));
+  connection.emit(complete(456, 3, 5, 2200));
   await flushPersistence();
   original.dispose();
   connection.recoveryCalls.length = 0;

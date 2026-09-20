@@ -127,7 +127,7 @@ test('invalid initial state does not leave a phantom connected device', async ()
     messageType: MESSAGE_TYPES.START,
     sessionId: 1,
     sequence: 1,
-    payload: { targetCount: 6 },
+    payload: { targetCount: 5 },
   });
   const controller = new BluetoothConnectionController({
     transport: new FakeBleTransport({ readValues: { STATE: nonStateMessage } }),

@@ -78,7 +78,7 @@ export function HomeScreen() {
       <Card style={styles.startCard}>
         <Text style={styles.cardLabel}>New session</Text>
         <Text style={styles.sectionTitle}>Ready when you are?</Text>
-        <Text style={styles.helper}>Complete 6 balls. Your OVbAT device records the official count and duration.</Text>
+        <Text style={styles.helper}>Complete 5 balls. Your OVbAT device records the official count and duration.</Text>
         <TextInput
           accessibilityLabel="Training notes"
           accessibilityHint="Optional multiline notes for this training session, up to 500 characters"

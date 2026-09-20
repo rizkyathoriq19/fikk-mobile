@@ -144,7 +144,7 @@ The mobile app preserves the error code in diagnostics, moves the training flow 
 - `messageType = 0x01`;
 - a new non-zero `sessionId`;
 - `sequence = 0` for the MVP request;
-- payload `targetCount = 6`.
+- payload `targetCount = 5`.
 
 Example for `sessionId = 0x01020304`:
 
@@ -156,7 +156,7 @@ Example for `sessionId = 0x01020304`:
 
 - mobile has a fully synchronized Ready device;
 - no mobile session is already `starting` or `active`;
-- `targetCount > 0`; the MVP sends `6`.
+- `1 <= targetCount <= 5`; the MVP sends `5`.
 
 **Accepted response:** Device sends ACK with `command = START`, matching session ID, and `status = ACCEPTED`, then publishes ARMED STATE. The mobile app enters its waiting-for-button state after the ACK and enters `Active` only after the Device Start Button produces ACTIVE STATE.
 
@@ -164,7 +164,7 @@ Example for `sessionId = 0x01020304`:
 
 **Idempotency:** A duplicate START for the same currently armed or active session ID is acknowledged without resetting count, target, or timer. A different session ID while ARMED or ACTIVE is rejected.
 
-The physical ESP-only start path does not write a START packet. Pressing the Device Start Button from READY creates a device-local session with target count `6` and enters ACTIVE immediately. After completion, the result stays on the Device LCD; releasing and pressing the button again starts the next ESP-only session. An Android START may replace a retained ESP-only result in COMPLETED and enters ARMED as usual.
+The physical ESP-only start path does not write a START packet. Pressing the Device Start Button from READY creates a device-local session with target count `5` and enters ACTIVE immediately. After completion, the result stays on the Device LCD; releasing and pressing the button again starts the next ESP-only session. An Android START may replace a retained ESP-only result in COMPLETED and enters ARMED as usual.
 
 ### 9.2 STOP — `0x02`
 
@@ -363,7 +363,7 @@ Table: `training_sessions`.
 | `id` | text primary key | Mobile local UUID |
 | `ble_session_id` | integer | Device session ID |
 | `notes` | text nullable | Trimmed operator notes, max 500 characters |
-| `target_count` | integer | MVP value `6` |
+| `target_count` | integer | MVP value `5` |
 | `final_count` | integer | Device COMPLETE count |
 | `duration_ms` | integer | Device COMPLETE duration |
 | `started_at` | text | App-observed start metadata |

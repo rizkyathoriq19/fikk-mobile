@@ -38,8 +38,8 @@ void assertRoundTrip(const Packet& packet) {
 }
 
 void test_start_fixture() {
-  const Packet packet = makeStart(0x01020304, 0x0506, 6);
-  const uint8_t expected[] = {1, 1, 4, 3, 2, 1, 6, 5, 6};
+  const Packet packet = makeStart(0x01020304, 0x0506, 5);
+  const uint8_t expected[] = {1, 1, 4, 3, 2, 1, 6, 5, 5};
   assertEncodedBytes(packet, expected, sizeof(expected));
   assertRoundTrip(packet);
 }
@@ -80,15 +80,15 @@ void test_progress_fixture() {
 }
 
 void test_complete_fixture() {
-  const Packet packet = makeComplete(9, 15, 6, 0x05060708, CompletionReason::TargetReached);
-  const uint8_t expected[] = {1, 0x83, 9, 0, 0, 0, 15, 0, 6, 8, 7, 6, 5, 1};
+  const Packet packet = makeComplete(9, 15, 5, 0x05060708, CompletionReason::TargetReached);
+  const uint8_t expected[] = {1, 0x83, 9, 0, 0, 0, 15, 0, 5, 8, 7, 6, 5, 1};
   assertEncodedBytes(packet, expected, sizeof(expected));
   assertRoundTrip(packet);
 }
 
 void test_state_fixture() {
-  const Packet packet = makeState(9, 16, DeviceState::Completed, 6, 0x090a0b0c);
-  const uint8_t expected[] = {1, 0x84, 9, 0, 0, 0, 16, 0, 2, 6, 12, 11, 10, 9};
+  const Packet packet = makeState(9, 16, DeviceState::Completed, 5, 0x090a0b0c);
+  const uint8_t expected[] = {1, 0x84, 9, 0, 0, 0, 16, 0, 2, 5, 12, 11, 10, 9};
   assertEncodedBytes(packet, expected, sizeof(expected));
   assertRoundTrip(packet);
 }

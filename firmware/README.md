@@ -160,21 +160,21 @@ These fixtures match the mobile codec tests. They use the values in the test vec
 
 | Message | Hex bytes |
 |---|---|
-| START (`sessionId=0x01020304`, `sequence=0x0506`, target `6`) | `01 01 04 03 02 01 06 05 06` |
+| START (`sessionId=0x01020304`, `sequence=0x0506`, target `5`) | `01 01 04 03 02 01 06 05 05` |
 | STOP (`sessionId=9`, `sequence=10`, reason `3`) | `01 02 09 00 00 00 0A 00 03` |
 | SYNC (`sessionId=9`, `sequence=11`) | `01 03 09 00 00 00 0B 00` |
 | ACK_RESULT (`sessionId=9`, `sequence=12`, result sequence `0xABCD`) | `01 04 09 00 00 00 0C 00 CD AB` |
 | ACK START accepted (`sessionId=9`, `sequence=13`) | `01 81 09 00 00 00 0D 00 01 00` |
 | PROGRESS (`sessionId=9`, `sequence=14`, count `5`, elapsed `0x01020304`) | `01 82 09 00 00 00 0E 00 05 04 03 02 01` |
-| COMPLETE (`sessionId=9`, `sequence=15`, count `6`, duration `0x05060708`, target reached) | `01 83 09 00 00 00 0F 00 06 08 07 06 05 01` |
-| STATE COMPLETED (`sessionId=9`, `sequence=16`, count `6`, elapsed `0x090A0B0C`) | `01 84 09 00 00 00 10 00 02 06 0C 0B 0A 09` |
+| COMPLETE (`sessionId=9`, `sequence=15`, count `5`, duration `0x05060708`, target reached) | `01 83 09 00 00 00 0F 00 05 08 07 06 05 01` |
+| STATE COMPLETED (`sessionId=9`, `sequence=16`, count `5`, elapsed `0x090A0B0C`) | `01 84 09 00 00 00 10 00 02 05 0C 0B 0A 09` |
 | ERROR (`sessionId=9`, `sequence=17`, code `0xBEEF`) | `01 FF 09 00 00 00 11 00 EF BE` |
 
 ## Session behavior
 
 ### Android + ESP mode
 
-- The mobile app sends `START` with a non-zero session ID and target count `6`.
+- The mobile app sends `START` with a non-zero session ID and target count `5`.
 - The Device enters ARMED and waits for the physical GPIO12 button.
 - The physical button starts the timer and moves the Device to ACTIVE.
 - The app receives ACK, STATE, PROGRESS, and COMPLETE events, then uses Save or Discard to send `ACK_RESULT`.
@@ -184,9 +184,9 @@ These fixtures match the mobile codec tests. They use the values in the test vec
 ### ESP-only mode
 
 - Press the physical GPIO12 button while the Device is READY.
-- The Device creates a local session, starts the timer immediately, and uses the fixed target count `6`.
+- The Device creates a local session, starts the timer immediately, and uses the fixed target count `5`.
 - No Android START, Save, Discard, or `ACK_RESULT` is required.
-- At count six, the result remains in COMPLETED and the LCD shows the final count and duration.
+- At count five, the result remains in COMPLETED and the LCD shows the final count and duration.
 - Release and press the physical button again to start the next ESP-only session.
 - An Android START can replace a retained ESP-only result when the Device is COMPLETED.
 
@@ -218,7 +218,7 @@ BLE disconnect callbacks do not alter the logical session. ACTIVE and COMPLETED 
 
 The normal `esp32dev` environment reads GPIO26 and GPIO12. `BallDetectionDebouncer` accepts one rising IR level per physical pulse and rejects a new pulse inside the 100 ms debounce window.
 
-With the explicit `esp32dev-sim` environment (`FIKK_DEV_SIMULATION=1`), while ACTIVE the device increments the count once every 2 seconds through the same `registerBallDetection()` path used by sensor input. The simulation environment is mutually exclusive with the physical input loop. The default mobile target is six.
+With the explicit `esp32dev-sim` environment (`FIKK_DEV_SIMULATION=1`), while ACTIVE the device increments the count once every 2 seconds through the same `registerBallDetection()` path used by sensor input. The simulation environment is mutually exclusive with the physical input loop. The default mobile target is five.
 
 The buzzer and LED outputs remain unassigned; no GPIO pins are invented for them.
 
@@ -278,16 +278,16 @@ The ESP32 test was compile-validated in this workspace. Runtime execution requir
 9. Read DEVICE_INFO.
 10. Read STATE.
 11. Subscribe to EVENT and STATE notifications.
-12. Send START with a non-zero session ID and target count six.
+12. Send START with a non-zero session ID and target count five.
 13. Confirm accepted ACK and ARMED STATE.
 14. Press the physical GPIO12 button and confirm ACTIVE STATE.
 15. Confirm progress notifications and LCD count/time.
-16. Confirm COMPLETE at count six, or send STOP and confirm a stopped result.
+16. Confirm COMPLETE at count five, or send STOP and confirm a stopped result.
 17. Send ACK_RESULT with the retained COMPLETE sequence.
 18. Confirm accepted ACK and READY STATE.
 19. Press the physical button from READY without sending START.
-20. Confirm ESP-only ACTIVE starts immediately with target six.
-21. Confirm the result remains on the LCD after count six.
+20. Confirm ESP-only ACTIVE starts immediately with target five.
+21. Confirm the result remains on the LCD after count five.
 22. Release and press the physical button again; confirm the next ESP-only session starts.
 
 ## Known hardware unknowns

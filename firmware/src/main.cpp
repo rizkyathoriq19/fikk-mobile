@@ -23,7 +23,7 @@ using namespace FikkProtocol;
 
 namespace {
 
-constexpr uint8_t kDefaultTargetCount = 6;
+constexpr uint8_t kMaxTargetCount = 5;
 constexpr uint8_t kIrSensorPin = 26;
 constexpr uint8_t kStartButtonPin = 12;
 constexpr uint8_t kLcdSclPin = 22;
@@ -110,7 +110,7 @@ class TrainingDevice {
   uint32_t sessionId_ = 0;
   uint16_t eventSequence_ = 0;
   uint16_t resultSequence_ = 0;
-  uint8_t targetCount_ = kDefaultTargetCount;
+  uint8_t targetCount_ = kMaxTargetCount;
   uint8_t count_ = 0;
   uint32_t startedAtMs_ = 0;
   uint32_t durationMs_ = 0;
@@ -259,7 +259,7 @@ void TrainingDevice::handlePhysicalStart() {
 }
 
 void TrainingDevice::startEspOnlySession() {
-  prepareSession(nextEspOnlySessionId(), kDefaultTargetCount, TrainingMode::EspOnly);
+  prepareSession(nextEspOnlySessionId(), kMaxTargetCount, TrainingMode::EspOnly);
   startedAtMs_ = millis();
   deviceState_ = DeviceState::Active;
   Serial.println("ESP_ONLY_START");
@@ -311,7 +311,7 @@ void TrainingDevice::handleCommand(const Packet& command) {
 
 void TrainingDevice::handleStart(const Packet& command) {
   const uint8_t requestedTarget = command.payload[0];
-  if (command.sessionId == 0 || requestedTarget == 0) {
+  if (command.sessionId == 0 || requestedTarget == 0 || requestedTarget > kMaxTargetCount) {
     sendAck(command.sessionId, MessageType::Start, AckStatus::InvalidPacket);
     sendError(command.sessionId, static_cast<uint16_t>(ErrorCode::InvalidTarget));
     return;
@@ -404,7 +404,7 @@ void TrainingDevice::resetToReady() {
   sessionId_ = 0;
   eventSequence_ = 0;
   resultSequence_ = 0;
-  targetCount_ = kDefaultTargetCount;
+  targetCount_ = kMaxTargetCount;
   count_ = 0;
   startedAtMs_ = 0;
   durationMs_ = 0;

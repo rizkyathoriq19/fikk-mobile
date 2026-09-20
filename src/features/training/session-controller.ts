@@ -10,7 +10,7 @@ import type { TrainingSession, TrainingSessionRepository } from '../history/sess
 import type { PersistedTrainingSession, TrainingSessionStore } from './session-store';
 import type { ConnectionSnapshot } from '../bluetooth/connection-controller';
 
-export const MVP_TARGET_COUNT = 6 as const;
+export const MVP_TARGET_COUNT = 5 as const;
 
 export type TrainingState = 'idle' | 'starting' | 'armed' | 'recovering' | 'active' | 'completed' | 'error';
 
