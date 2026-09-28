@@ -1,367 +1,518 @@
 {
   "app.json": {
-    "mtime": 1787832472.3928783,
-    "ast_hash": "552637d40a2cdf167eff39e955bc0045",
+    "mtime": 1789904770.4853811,
+    "seen": 1790560169.576679,
+    "ast_hash": "c7794ecd94563d738cdeec766704a874",
     "semantic_hash": ""
   },
   "babel.config.js": {
-    "mtime": 1787803219.860953,
+    "mtime": 1789904770.4853811,
+    "seen": 1790560169.5766802,
     "ast_hash": "089fd4a2f759bc83f8ae33c2d2c2c0ba",
     "semantic_hash": ""
   },
   "firmware/include/BleProfile.h": {
-    "mtime": 1787813145.3366241,
-    "ast_hash": "a1d7cd3ec313768edd1de6ab5fe410be",
+    "mtime": 1789904770.486861,
+    "seen": 1790560169.5766814,
+    "ast_hash": "e83932aa7bbe99ea2ade781315c3b808",
     "semantic_hash": ""
   },
   "firmware/include/DeviceState.h": {
-    "mtime": 1787813145.4714386,
-    "ast_hash": "5aeb5e9f26e86c734f1b7a4ef22d4821",
+    "mtime": 1789904770.486926,
+    "seen": 1790560169.576682,
+    "ast_hash": "7e6d9168ccd77b4707772b7dab65dc05",
     "semantic_hash": ""
   },
   "firmware/include/InputDebouncer.h": {
-    "mtime": 1787827427.4120336,
+    "mtime": 1789904770.486926,
+    "seen": 1790560169.576683,
     "ast_hash": "eaa732a7a6eff66d65e65464a4d1252e",
     "semantic_hash": ""
   },
   "firmware/include/Protocol.h": {
-    "mtime": 1787813649.2209136,
-    "ast_hash": "a77c9333d40d6fb273ebd1f35adee686",
+    "mtime": 1789904770.486926,
+    "seen": 1790560169.5766838,
+    "ast_hash": "e3426aecadc5294576880fb37f13f96d",
     "semantic_hash": ""
   },
   "firmware/src/main.cpp": {
-    "mtime": 1787827427.4130332,
-    "ast_hash": "be67b1b4d2827487ec3a7711ccd7af16",
+    "mtime": 1790559966.4124968,
+    "seen": 1790560169.5766845,
+    "ast_hash": "86fada9f401949229e3304a765cb8bbc",
     "semantic_hash": ""
   },
   "firmware/test/test_input_debouncer/test_main.cpp": {
-    "mtime": 1787827427.414033,
+    "mtime": 1789904770.4873092,
+    "seen": 1790560169.576685,
     "ast_hash": "2b6d14e5797fa7c757bea0b427a8e182",
     "semantic_hash": ""
   },
   "firmware/test/test_protocol/test_main.cpp": {
-    "mtime": 1787813579.4974363,
-    "ast_hash": "40c9cb25b46462bf93f419631339efb0",
+    "mtime": 1789905293.6981194,
+    "seen": 1790560169.5766857,
+    "ast_hash": "f062fb88832e1397a6ede5c9139e9db7",
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1787843658.8223789,
-    "ast_hash": "f93ae5211ccdbf5ecb0bda3758324797",
+    "mtime": 1789904770.489694,
+    "seen": 1790560169.5766864,
+    "ast_hash": "cbc2f648dd21754118591f99aadfa253",
     "semantic_hash": ""
   },
   "scripts/validate-esp32-ble.sh": {
-    "mtime": 1787815716.2453156,
-    "ast_hash": "db7f805d2634ac5545a6a64579958b1f",
+    "mtime": 1789905337.890699,
+    "seen": 1790560169.5766869,
+    "ast_hash": "23fa5b2e06d305dac39e19d7d425fdf3",
     "semantic_hash": ""
   },
   "src/app/(tabs)/_layout.tsx": {
-    "mtime": 1787818892.5032144,
-    "ast_hash": "5a0782df75e3a4702bfa8c32c5ad6b3a",
+    "mtime": 1789904770.4917202,
+    "seen": 1790560169.5766876,
+    "ast_hash": "59920e8c0bf12474d045fe8e8a90dcdb",
     "semantic_hash": ""
   },
   "src/app/(tabs)/history.tsx": {
-    "mtime": 1787818892.277791,
+    "mtime": 1789904770.4917996,
+    "seen": 1790560169.5766885,
     "ast_hash": "fbf1199d51a0f326bfc492537e71d899",
     "semantic_hash": ""
   },
   "src/app/(tabs)/index.tsx": {
-    "mtime": 1787818892.4671578,
+    "mtime": 1789904770.4917996,
+    "seen": 1790560169.5766895,
     "ast_hash": "afa373e97fdb2beb9c8f8a0351084333",
     "semantic_hash": ""
   },
   "src/app/(tabs)/settings.tsx": {
-    "mtime": 1787818892.5138361,
+    "mtime": 1789904770.4917996,
+    "seen": 1790560169.57669,
     "ast_hash": "74701791f2fa4aef6ab000963f3046d9",
     "semantic_hash": ""
   },
   "src/app/_layout.tsx": {
-    "mtime": 1787825888.323218,
-    "ast_hash": "9bd71137a67b89e0f267efd3bb5496eb",
+    "mtime": 1789904770.4917996,
+    "seen": 1790560169.5766904,
+    "ast_hash": "6d644c70620ff5bf2ea4cff05869891a",
     "semantic_hash": ""
   },
   "src/app/history/[id].tsx": {
-    "mtime": 1787832472.4014132,
+    "mtime": 1789904770.4917996,
+    "seen": 1790560169.5766926,
     "ast_hash": "bfa93650003f2d430da1eeed83bc4c0c",
     "semantic_hash": ""
   },
   "src/app/result.tsx": {
-    "mtime": 1787827427.4150333,
+    "mtime": 1789904770.4917996,
+    "seen": 1790560169.5766933,
     "ast_hash": "3bf434256b9c6b9a1de147915922673e",
     "semantic_hash": ""
   },
   "src/ble/create-native-transport.ts": {
-    "mtime": 1787816985.763575,
+    "mtime": 1789904770.4917996,
+    "seen": 1790560169.5766938,
     "ast_hash": "4dca2ee2f56d295f30ff5c1a5c29d67f",
     "semantic_hash": ""
   },
   "src/ble/fikk-profile.test.ts": {
-    "mtime": 1787816985.6932847,
+    "mtime": 1789904770.4920723,
+    "seen": 1790560169.5766945,
     "ast_hash": "67e80d818778781b84faadce51ca7275",
     "semantic_hash": ""
   },
   "src/ble/fikk-profile.ts": {
-    "mtime": 1787816985.7564497,
+    "mtime": 1789904770.4920723,
+    "seen": 1790560169.576695,
     "ast_hash": "bdbc24ebbf4ecf9dc2e938af271a15ce",
     "semantic_hash": ""
   },
   "src/ble/profile.test.ts": {
-    "mtime": 1787816985.7215626,
+    "mtime": 1789904770.4920723,
+    "seen": 1790560169.576696,
     "ast_hash": "348c07c8dfae30773a1ff4bb26910051",
     "semantic_hash": ""
   },
   "src/ble/profile.ts": {
-    "mtime": 1787804063.431998,
+    "mtime": 1789904770.4920723,
+    "seen": 1790560169.5766964,
     "ast_hash": "3066a55b4d905223db64e783654d514d",
     "semantic_hash": ""
   },
   "src/ble/react-native-ble-manager.test.ts": {
-    "mtime": 1787834075.228145,
-    "ast_hash": "5a43af29ea7514c8b48f60d10c91c323",
+    "mtime": 1789904770.4920723,
+    "seen": 1790560169.5766969,
+    "ast_hash": "af84848d7631a3c5b8606c58246aa62f",
     "semantic_hash": ""
   },
   "src/ble/react-native-ble-manager.ts": {
-    "mtime": 1787834075.2301538,
-    "ast_hash": "fb7dfe2503148f512404f4200722a3f6",
+    "mtime": 1789904770.4920723,
+    "seen": 1790560169.5766973,
+    "ast_hash": "ada09b460dbfed481a5fc450bab052e4",
     "semantic_hash": ""
   },
   "src/ble/transport.test.ts": {
-    "mtime": 1787816985.7388327,
-    "ast_hash": "700806260bceb26d9e7673ecb9e54db8",
+    "mtime": 1789904770.4920723,
+    "seen": 1790560169.576698,
+    "ast_hash": "f5333ea60eb1062accb55726cd66e927",
     "semantic_hash": ""
   },
   "src/ble/transport.ts": {
-    "mtime": 1787834075.2301538,
+    "mtime": 1789904770.4920723,
+    "seen": 1790560169.5766985,
     "ast_hash": "aa6d784857492c997d65b33eead4cea2",
     "semantic_hash": ""
   },
   "src/components/ResultField.tsx": {
-    "mtime": 1787832472.4014132,
-    "ast_hash": "5a3f05a2614f229df261b3ad5eada930",
+    "mtime": 1789904770.4920723,
+    "seen": 1790560169.576699,
+    "ast_hash": "6dc291eed1329bb4425d1770824745a8",
     "semantic_hash": ""
   },
   "src/components/Screen.tsx": {
-    "mtime": 1787818845.6282322,
-    "ast_hash": "219aabffb8e3114948231993501a1283",
+    "mtime": 1789904770.4925172,
+    "seen": 1790560169.5767,
+    "ast_hash": "7bffeb0fa19a460128fae503676a5a75",
     "semantic_hash": ""
   },
   "src/features/bluetooth/BluetoothProvider.tsx": {
-    "mtime": 1787834075.231427,
+    "mtime": 1789904770.4926019,
+    "seen": 1790560169.5767014,
     "ast_hash": "dde5205bd109e27e4f248da35c86982d",
     "semantic_hash": ""
   },
   "src/features/bluetooth/connection-controller.test.ts": {
-    "mtime": 1787836384.2963004,
-    "ast_hash": "9ae258e8b3735ff4e8c42b6a93a80cf8",
+    "mtime": 1789905150.968043,
+    "seen": 1790560169.5767028,
+    "ast_hash": "f8bbcc0049244729e71ad2a95de3fcef",
     "semantic_hash": ""
   },
   "src/features/bluetooth/connection-controller.ts": {
-    "mtime": 1787836384.2973697,
-    "ast_hash": "0a4f65b90cb3a433c5ea38f663146dd5",
+    "mtime": 1789904770.4926674,
+    "seen": 1790560169.5767033,
+    "ast_hash": "54f136cf7f59469b77092a83983c0dca",
     "semantic_hash": ""
   },
   "src/features/bluetooth/labels.ts": {
-    "mtime": 1787818047.0404463,
-    "ast_hash": "d044dd1a2520458965886a214408a5d4",
+    "mtime": 1789904770.4926674,
+    "seen": 1790560169.576704,
+    "ast_hash": "4043a1ca35dbf9e47bf69a7dc77b8e87",
     "semantic_hash": ""
   },
   "src/features/bluetooth/native-device-store.ts": {
-    "mtime": 1787816988.3472705,
-    "ast_hash": "85c4ee3389e6c6d4e78fd4daee0b270f",
+    "mtime": 1789904770.4926674,
+    "seen": 1790560169.5767045,
+    "ast_hash": "b4700951815ad3d8b30e1fc3dc24e2aa",
     "semantic_hash": ""
   },
   "src/features/bluetooth/native-permissions.ts": {
-    "mtime": 1787816988.1965635,
+    "mtime": 1789904770.4926674,
+    "seen": 1790560169.5767052,
     "ast_hash": "c169c56f04ef04bee1527a7df87510ca",
     "semantic_hash": ""
   },
   "src/features/history/session-repository.ts": {
-    "mtime": 1787832472.403545,
+    "mtime": 1789904770.4926674,
+    "seen": 1790560169.576706,
     "ast_hash": "bd8559da240801ecced4b55562af610b",
     "semantic_hash": ""
   },
   "src/features/history/sqlite-session-repository.ts": {
-    "mtime": 1787832472.403545,
+    "mtime": 1789904770.4929187,
+    "seen": 1790560169.5767071,
     "ast_hash": "4991af8ef3529c08d2527597651f6553",
     "semantic_hash": ""
   },
   "src/features/training/TrainingProvider.tsx": {
-    "mtime": 1787835264.8717203,
-    "ast_hash": "22ed55f94f1bbbad4468d065bff4e3e7",
+    "mtime": 1789904770.4929187,
+    "seen": 1790560169.5767076,
+    "ast_hash": "62f2d8c11bd57884022bc4e36a37a06d",
     "semantic_hash": ""
   },
   "src/features/training/labels.ts": {
-    "mtime": 1787832472.4061131,
-    "ast_hash": "deca32a12df82f49551038221c637cf3",
+    "mtime": 1790559942.2292945,
+    "seen": 1790560169.576709,
+    "ast_hash": "efcb3e71e33d99750858c8645b1feaf6",
     "semantic_hash": ""
   },
   "src/features/training/native-session-store.ts": {
-    "mtime": 1787835264.8717203,
+    "mtime": 1789904770.4930038,
+    "seen": 1790560169.5767097,
     "ast_hash": "26de7d70b75cbb9ae47293273f5e33ab",
     "semantic_hash": ""
   },
   "src/features/training/session-controller.test.ts": {
-    "mtime": 1787836384.299384,
-    "ast_hash": "b3ebbc15e014d519f0db3f004679c33d",
+    "mtime": 1789905151.1475163,
+    "seen": 1790560169.5767102,
+    "ast_hash": "c6ccaf2a718772e9557ce071d3659e02",
     "semantic_hash": ""
   },
   "src/features/training/session-controller.ts": {
-    "mtime": 1787836384.300942,
-    "ast_hash": "56eed86b7ba2b276bb7495e4be9095b7",
+    "mtime": 1789905150.6285214,
+    "seen": 1790560169.5767107,
+    "ast_hash": "6f0c7ad77287048407dcde5d154b9640",
     "semantic_hash": ""
   },
   "src/features/training/session-store.ts": {
-    "mtime": 1787835264.8717203,
-    "ast_hash": "e930b8ff3692a23c26297e4525225ca7",
+    "mtime": 1789904770.4930038,
+    "seen": 1790560169.5767112,
+    "ast_hash": "dbc67d0ad2e6e1a21c592649314c5150",
     "semantic_hash": ""
   },
   "src/protocol/codec.test.ts": {
-    "mtime": 1787816988.5290365,
-    "ast_hash": "73076b5b0d15cbbab1bcd22a3a642988",
+    "mtime": 1789905333.56074,
+    "seen": 1790560169.576712,
+    "ast_hash": "249b739972793e48096ed68ce6c933a4",
     "semantic_hash": ""
   },
   "src/protocol/codec.ts": {
-    "mtime": 1787805377.9750493,
-    "ast_hash": "6df1ced2a7ca085a1860d7b936852b28",
+    "mtime": 1789904770.493331,
+    "seen": 1790560169.5767124,
+    "ast_hash": "05d29a0d2ec8d8415264fb8789957a7d",
     "semantic_hash": ""
   },
   "src/protocol/constants.test.ts": {
-    "mtime": 1787816988.49708,
+    "mtime": 1789904770.493331,
+    "seen": 1790560169.5767133,
     "ast_hash": "4cae985e7bb8522dcae799111d6a4b5f",
     "semantic_hash": ""
   },
   "src/protocol/constants.ts": {
-    "mtime": 1787813810.2061706,
+    "mtime": 1789904770.493331,
+    "seen": 1790560169.576714,
     "ast_hash": "bbc49dad442819cb3cf40700cb528951",
     "semantic_hash": ""
   },
   "src/screens/HistoryDetailScreen.tsx": {
-    "mtime": 1787836384.3016124,
-    "ast_hash": "4aeed63a604beba67466f537360f1a4d",
+    "mtime": 1789904770.4934795,
+    "seen": 1790560169.5767152,
+    "ast_hash": "32d2e43a6ab7849c5dbc81462a1fa9ae",
     "semantic_hash": ""
   },
   "src/screens/HistoryScreen.tsx": {
-    "mtime": 1787836384.3036487,
-    "ast_hash": "22d5e530655082325cfc2f36d872f5f7",
+    "mtime": 1789904770.4934795,
+    "seen": 1790560169.576716,
+    "ast_hash": "47d6b4a50cc8908bc3d7c6132a06dee2",
     "semantic_hash": ""
   },
   "src/screens/HomeScreen.tsx": {
-    "mtime": 1787836384.3041549,
-    "ast_hash": "a27a037f33d5ad7fc2365b1a6011d9f2",
+    "mtime": 1789905150.8108013,
+    "seen": 1790560169.576717,
+    "ast_hash": "68804b2580a6cd94bce5130be3605b24",
     "semantic_hash": ""
   },
   "src/screens/ResultScreen.tsx": {
-    "mtime": 1787836384.3041549,
-    "ast_hash": "cf71d046da97a731701f30b3fa73064f",
+    "mtime": 1789904770.4934795,
+    "seen": 1790560169.5767183,
+    "ast_hash": "83a0647ec3f6d022a7d07696f82b827d",
     "semantic_hash": ""
   },
   "src/screens/SettingsScreen.tsx": {
-    "mtime": 1787836384.306214,
-    "ast_hash": "66e82bab6667a4e3f7f41578364ca8f4",
+    "mtime": 1789904770.4934795,
+    "seen": 1790560169.5767188,
+    "ast_hash": "9a2409ccf92cad35402730a128a0762d",
     "semantic_hash": ""
   },
   "tsconfig.json": {
-    "mtime": 1787803238.44949,
+    "mtime": 1789904770.4934795,
+    "seen": 1790560169.5767195,
     "ast_hash": "2ad754f3450ab72e3788278d88830245",
     "semantic_hash": ""
   },
   ".scratch/ble-training-app/issues/01-validate-physical-ble-foundation.md": {
-    "mtime": 1787802408.614098,
+    "mtime": 1789904770.4844449,
+    "seen": 1790560169.5767202,
     "ast_hash": "2244f27991d896a30b3937d970c3ad9f",
     "semantic_hash": ""
   },
   ".scratch/ble-training-app/issues/02-connect-compatible-device-ready.md": {
-    "mtime": 1787802408.725794,
+    "mtime": 1789904770.484553,
+    "seen": 1790560169.5767212,
     "ast_hash": "eb56e6fd9bc8f2fcdf0d0d1961af1721",
     "semantic_hash": ""
   },
   ".scratch/ble-training-app/issues/03-start-six-ball-session.md": {
-    "mtime": 1787802408.6266148,
+    "mtime": 1789904770.484553,
+    "seen": 1790560169.5767221,
     "ast_hash": "829509e19ca11dbd4d644140175d485e",
     "semantic_hash": ""
   },
   ".scratch/ble-training-app/issues/04-complete-six-ball-result.md": {
-    "mtime": 1787802408.725794,
+    "mtime": 1789904770.484553,
+    "seen": 1790560169.5767226,
     "ast_hash": "065834ad5f83d98d04ed9ceaab45b189",
     "semantic_hash": ""
   },
   ".scratch/ble-training-app/issues/05-save-discard-history.md": {
-    "mtime": 1787802408.6256142,
+    "mtime": 1789904770.484553,
+    "seen": 1790560169.5767233,
     "ast_hash": "937226ec41d8c6cf55ee5814a3f7c1b5",
     "semantic_hash": ""
   },
   ".scratch/ble-training-app/issues/06-recover-after-disconnect.md": {
-    "mtime": 1787802408.892966,
+    "mtime": 1789904770.484553,
+    "seen": 1790560169.5767248,
     "ast_hash": "f3ea7ff7270bdea5e8f7c1e99f4f62d5",
     "semantic_hash": ""
   },
   ".scratch/ble-training-app/issues/07-restore-after-app-interruption.md": {
-    "mtime": 1787802408.8984811,
+    "mtime": 1789904770.484553,
+    "seen": 1790560169.5767255,
     "ast_hash": "87013fd17125f029a9f573c9d5c31e03",
     "semantic_hash": ""
   },
   ".scratch/ble-training-app/issues/08-harden-failures-accessibility.md": {
-    "mtime": 1787802408.8554263,
+    "mtime": 1789904770.484553,
+    "seen": 1790560169.576726,
     "ast_hash": "5fe6df51d55a180247f740ce8f5ab936",
     "semantic_hash": ""
   },
   ".scratch/ble-training-app/issues/09-physical-matrix-release.md": {
-    "mtime": 1787802409.8942125,
+    "mtime": 1789904770.484553,
+    "seen": 1790560169.5767267,
     "ast_hash": "1495d1532df79ecdac3410e43d269d20",
     "semantic_hash": ""
   },
   ".scratch/ble-training-app/spec.md": {
-    "mtime": 1787801450.6437635,
+    "mtime": 1789904770.484553,
+    "seen": 1790560169.5767274,
     "ast_hash": "38247ac452e6fb7d56756ddfc71462d5",
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1788165486.897315,
+    "mtime": 1789904770.4853811,
+    "seen": 1790560169.576732,
     "ast_hash": "af05a39246408eaea7e53e99932e566d",
     "semantic_hash": ""
   },
   "PRD.md": {
-    "mtime": 1787798479.2645676,
-    "ast_hash": "dd2a8ab4b6ae1ea5e5ad792441bfe1ad",
+    "mtime": 1789905409.4780285,
+    "seen": 1790560169.5767336,
+    "ast_hash": "8b981cabef92338b08928beffc5139a9",
     "semantic_hash": ""
   },
   "docs/agents/domain.md": {
-    "mtime": 1787800804.5987914,
+    "mtime": 1789904770.4861403,
+    "seen": 1790560169.5767357,
     "ast_hash": "35089ed6a70a657c91fd100ade31b642",
     "semantic_hash": ""
   },
   "docs/agents/issue-tracker.md": {
-    "mtime": 1787802766.0046248,
+    "mtime": 1789904770.4862745,
+    "seen": 1790560169.5767365,
     "ast_hash": "dc92fcade376014d3d737cf7658f8c90",
     "semantic_hash": ""
   },
   "docs/agents/triage-labels.md": {
-    "mtime": 1787800804.5987914,
+    "mtime": 1789904770.4862745,
+    "seen": 1790560169.5767372,
     "ast_hash": "22add54cb98451c55b20e6b7992d4a85",
     "semantic_hash": ""
   },
   "firmware/README.md": {
-    "mtime": 1787827427.4110248,
-    "ast_hash": "c30b0ce4a0d6f67ff5940b529ef47f3e",
+    "mtime": 1789905396.3351507,
+    "seen": 1790560169.5767405,
+    "ast_hash": "097f445bee33c724bcaa83ced8ab3be2",
     "semantic_hash": ""
   },
   "pnpm-workspace.yaml": {
-    "mtime": 1787843658.8223789,
+    "mtime": 1789904770.490694,
+    "seen": 1790560169.5767412,
     "ast_hash": "88d850c8c8aa76e5ac817e04ec68769e",
     "semantic_hash": ""
   },
-  "spikes/001-ble-foundation/README.md": {
-    "mtime": 1787804484.842063,
-    "ast_hash": "3dffe5d612e56edc33bf399cb47a05b1",
-    "semantic_hash": ""
-  },
-  "to-questionnaire-esp-ble.md": {
-    "mtime": 1787814429.4769366,
-    "ast_hash": "e6f43d8256bbcef2898b61014b8eb138",
-    "semantic_hash": ""
-  },
   ".codex/hooks.json": {
-    "mtime": 1788165486.907474,
+    "mtime": 1789904770.483694,
+    "seen": 1790560169.5766761,
     "ast_hash": "5ebef3dd159986e465ab65e4014107ec",
+    "semantic_hash": ""
+  },
+  "src/app/active.tsx": {
+    "mtime": 1789904770.4917996,
+    "seen": 1790560169.5766916,
+    "ast_hash": "1c66f347793dc2d28bc01439901f3c75",
+    "semantic_hash": ""
+  },
+  "src/components/ui.tsx": {
+    "mtime": 1789904770.4925172,
+    "seen": 1790560169.5767004,
+    "ast_hash": "61c8f8d8162ca864da1a2e358addc62a",
+    "semantic_hash": ""
+  },
+  "src/features/training/labels.test.ts": {
+    "mtime": 1790559926.0254607,
+    "seen": 1790560169.576708,
+    "ast_hash": "278ff9b117c8b0c1af3416cfb50126eb",
+    "semantic_hash": ""
+  },
+  "src/screens/ActiveTrainingScreen.tsx": {
+    "mtime": 1789904770.493331,
+    "seen": 1790560169.5767145,
+    "ast_hash": "6e89bce23d7cd4ed2075314610781167",
+    "semantic_hash": ""
+  },
+  ".scratch/ovbat-hardware/spec.md": {
+    "mtime": 1789904770.4846942,
+    "seen": 1790560169.5767279,
+    "ast_hash": "eba5cd96331cb2dfd98158fab97c925f",
+    "semantic_hash": ""
+  },
+  ".scratch/ovbat-hardware/ticket-01.md": {
+    "mtime": 1789904770.4853811,
+    "seen": 1790560169.5767283,
+    "ast_hash": "e97eadf579c369b4d5325ec14f3014c2",
+    "semantic_hash": ""
+  },
+  ".scratch/ovbat-hardware/ticket-02.md": {
+    "mtime": 1789904770.4853811,
+    "seen": 1790560169.5767288,
+    "ast_hash": "29ed10bc49f187927979a4f3bcbdfe02",
+    "semantic_hash": ""
+  },
+  ".scratch/ovbat-hardware/ticket-03.md": {
+    "mtime": 1789904770.4853811,
+    "seen": 1790560169.5767295,
+    "ast_hash": "5bef16a55172dd6670c099f8f08923a1",
+    "semantic_hash": ""
+  },
+  ".scratch/ovbat-hardware/ticket-04.md": {
+    "mtime": 1789904770.4853811,
+    "seen": 1790560169.5767303,
+    "ast_hash": "d1ad658b40c89a60f6df2f9fac952c2f",
+    "semantic_hash": ""
+  },
+  ".scratch/ovbat-hardware/ticket-05.md": {
+    "mtime": 1789904770.4853811,
+    "seen": 1790560169.5767312,
+    "ast_hash": "5c6d2c709c1654cebbac6360326bba36",
+    "semantic_hash": ""
+  },
+  "CONTEXT.md": {
+    "mtime": 1789904770.4853811,
+    "seen": 1790560169.5767326,
+    "ast_hash": "7ab5f454f817d20741cc59863c7426fa",
+    "semantic_hash": ""
+  },
+  "docs/adr/0001-device-authoritative-active-session-flow.md": {
+    "mtime": 1789904770.4860725,
+    "seen": 1790560169.5767343,
+    "ast_hash": "1b80cbc58fee4318d59911315322e570",
+    "semantic_hash": ""
+  },
+  "docs/adr/0002-physical-start-button-gates-session-timer.md": {
+    "mtime": 1789904770.4861403,
+    "seen": 1790560169.5767348,
+    "ast_hash": "90b879ad4c510250c527949932ea6a28",
+    "semantic_hash": ""
+  },
+  "docs/api-contract.md": {
+    "mtime": 1789905812.641431,
+    "seen": 1790560169.5767379,
+    "ast_hash": "7f4e45cd3b609e5c536f142b03dec1ae",
+    "semantic_hash": ""
+  },
+  "docs/how-to-use-app.md": {
+    "mtime": 1789905334.1149874,
+    "seen": 1790560169.5767384,
+    "ast_hash": "b1a340c147b32c468f54b51a253246e8",
     "semantic_hash": ""
   }
 }

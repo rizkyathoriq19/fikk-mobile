@@ -14,11 +14,10 @@ export function formatCompletionReason(reason: number): string {
 }
 
 export function formatDuration(milliseconds: number): string {
-  if (milliseconds < 1000) {
-    return `${milliseconds} ms`;
-  }
-  const seconds = milliseconds / 1000;
-  return `${seconds >= 10 ? seconds.toFixed(0) : seconds.toFixed(1)} s`;
+  const minutes = Math.floor(milliseconds / 60_000);
+  const seconds = Math.floor(milliseconds / 1_000) % 60;
+  const remainder = milliseconds % 1_000;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}:${String(remainder).padStart(3, '0')}`;
 }
 
 export function formatTrainingError(error: string): string {

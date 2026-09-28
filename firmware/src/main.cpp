@@ -30,7 +30,7 @@ constexpr uint8_t kLcdSclPin = 22;
 constexpr uint8_t kLcdSdaPin = 21;
 // ponytail: keep the common 20x4 backpack address configurable; scan if a board uses another address.
 constexpr uint8_t kLcdAddress = 0x27;
-// The timer is displayed with one-second precision; avoid overloading the LCD I2C bus.
+// The timer is refreshed once per second; avoid overloading the LCD I2C bus.
 constexpr uint32_t kDisplayRefreshMs = 1000;
 constexpr uint8_t kLcdColumns = 20;
 constexpr uint8_t kLcdRows = 4;
@@ -456,6 +456,17 @@ void TrainingDevice::runDevelopmentSimulation() {
 
 void TrainingDevice::updateDisplay() {
   char line[21] = {};
+  const auto writeTime = [&](uint8_t row, uint32_t milliseconds) {
+    const uint32_t totalSeconds = milliseconds / 1000;
+    std::snprintf(
+        line,
+        sizeof(line),
+        "Time: %02lu:%02lu:%03lu",
+        static_cast<unsigned long>(totalSeconds / 60),
+        static_cast<unsigned long>(totalSeconds % 60),
+        static_cast<unsigned long>(milliseconds % 1000));
+    writeLcdLine(row, line);
+  };
   writeLcdLine(0, "OVbAT TRAINING");
   if (deviceState_ == DeviceState::Ready) {
     writeLcdLine(1, "Ready");
@@ -469,17 +480,13 @@ void TrainingDevice::updateDisplay() {
   } else if (deviceState_ == DeviceState::Active) {
     std::snprintf(line, sizeof(line), "Count: %u/%u", count_, targetCount_);
     writeLcdLine(1, line);
-    const uint32_t elapsed = elapsedMs() / 1000;
-    std::snprintf(line, sizeof(line), "Time: %02lu:%02lu", static_cast<unsigned long>(elapsed / 60), static_cast<unsigned long>(elapsed % 60));
-    writeLcdLine(2, line);
+    writeTime(2, elapsedMs());
     writeLcdLine(3, "Sensor: READY");
   } else if (deviceState_ == DeviceState::Completed) {
     writeLcdLine(1, trainingMode_ == TrainingMode::EspOnly ? "Done - press button" : "Completed");
     std::snprintf(line, sizeof(line), "Count: %u/%u", count_, targetCount_);
     writeLcdLine(2, line);
-    const uint32_t duration = durationMs_ / 1000;
-    std::snprintf(line, sizeof(line), "Time: %02lu:%02lu", static_cast<unsigned long>(duration / 60), static_cast<unsigned long>(duration % 60));
-    writeLcdLine(3, line);
+    writeTime(3, durationMs_);
   } else {
     writeLcdLine(1, "Error");
     writeLcdLine(2, "Check device");
